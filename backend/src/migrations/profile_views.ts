@@ -2,10 +2,22 @@ export class CreateProfileViewsTable {
   name = 'CreateProfileViewsTable';
 
   async up(queryRunner: any): Promise<void> {
-    // Drop existing table to ensure clean creation
-    await queryRunner.query(`
-      DROP TABLE IF EXISTS "profile_views" CASCADE;
+    // Check if table already exists
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'profile_views'
+      );
     `);
+    
+    if (tableExists[0].exists) {
+      console.log('⚠️ Profile views table already exists. Skipping creation to preserve existing data...');
+      console.log('✅ Profile views table migration completed safely (existing data preserved)');
+      return;
+    }
+
+    console.log('📋 Creating new profile views table...');
 
     await queryRunner.query(`
       CREATE TABLE "profile_views" (
@@ -50,6 +62,8 @@ export class CreateProfileViewsTable {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_profile_views_viewer_id" ON "profile_views" ("viewerId");
     `);
+
+    console.log('✅ Profile views table created successfully!');
 
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_profile_views_biodata_id" ON "profile_views" ("biodataId");

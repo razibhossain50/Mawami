@@ -2,10 +2,26 @@ export class CreateUserTable {
   name = 'CreateUserTable';
 
   async up(queryRunner: any): Promise<void> {
-    // Drop existing table to ensure clean creation
-    await queryRunner.query(`
-      DROP TABLE IF EXISTS "user" CASCADE;
+    // Check if table already exists
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user'
+      );
     `);
+
+    if (tableExists[0].exists) {
+      console.log('⚠️ User table already exists. Skipping creation to preserve existing data...');
+
+      // Only add missing columns or indexes if needed
+      // Add any new columns here in future migrations
+
+      console.log('✅ User table migration completed safely (existing data preserved)');
+      return;
+    }
+
+    console.log('📋 Creating new user table...');
 
     await queryRunner.query(`
       CREATE TABLE "user" (
@@ -33,6 +49,8 @@ export class CreateUserTable {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_user_google_id" ON "user" ("googleId") WHERE "googleId" IS NOT NULL;
     `);
+
+    console.log('✅ User table created successfully!');
   }
 
   async down(queryRunner: any): Promise<void> {

@@ -2,10 +2,22 @@ export class CreateFavoritesTable {
   name = 'CreateFavoritesTable';
 
   async up(queryRunner: any): Promise<void> {
-    // Drop existing table to ensure clean creation
-    await queryRunner.query(`
-      DROP TABLE IF EXISTS "favorites" CASCADE;
+    // Check if table already exists
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'favorites'
+      );
     `);
+    
+    if (tableExists[0].exists) {
+      console.log('⚠️ Favorites table already exists. Skipping creation to preserve existing data...');
+      console.log('✅ Favorites table migration completed safely (existing data preserved)');
+      return;
+    }
+
+    console.log('📋 Creating new favorites table...');
 
     await queryRunner.query(`
       CREATE TABLE "favorites" (
@@ -50,6 +62,8 @@ export class CreateFavoritesTable {
       CREATE UNIQUE INDEX IF NOT EXISTS "UQ_favorites_user_biodata" 
       ON "favorites" ("userId", "biodataId");
     `);
+
+    console.log('✅ Favorites table created successfully!');
 
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_favorites_user_id" ON "favorites" ("userId");
