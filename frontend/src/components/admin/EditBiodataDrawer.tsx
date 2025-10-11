@@ -15,66 +15,14 @@ import { FileUploadResponse } from '@/types/api';
 import { ImageUploadWithCrop } from '@/components/common/ImageUploadWithCrop';
 import { ImageCropResult } from '@/hooks/useImageCrop';
 
-interface Biodata {
-    id: number;
-    step: number;
-    userId: number | null;
-    completedSteps: number[] | null;
-    partnerAgeMin: number;
-    partnerAgeMax: number;
-    sameAsPermanent: boolean;
-    religion: string;
-    biodataType: string;
-    maritalStatus: string;
-    dateOfBirth: string;
-    age: number;
-    height: string;
-    weight: number;
-    complexion: string;
-    profession: string;
-    bloodGroup: string;
-    permanentCountry: string;
-    permanentDivision: string;
-    permanentZilla: string;
-    permanentUpazilla: string;
-    permanentArea: string;
-    presentCountry: string;
-    presentDivision: string;
-    presentZilla: string;
-    presentUpazilla: string;
-    presentArea: string;
-    healthIssues: string;
-    educationMedium: string;
-    highestEducation: string;
-    instituteName: string;
-    subject: string;
-    passingYear: string;
-    result: string;
-    economicCondition: string;
-    fatherName: string;
-    fatherProfession: string;
-    fatherAlive: string;
-    motherName: string;
-    motherProfession: string;
-    motherAlive: string;
-    brothersCount: number;
-    sistersCount: number;
-    familyDetails: string;
-    partnerComplexion: string;
-    partnerHeight: string;
-    partnerEducation: string;
-    partnerProfession: string;
-    partnerLocation: string;
-    partnerDetails: string;
-    fullName: string;
-    profilePicture: string | null;
-    profilePictureVisible: boolean;
-    email: string | null;
-    username: string | null;
-    guardianMobile: string;
-    ownMobile: string;
-    biodataApprovalStatus: string;
-    biodataVisibilityStatus: string;
+import { BiodataProfile, BiodataApprovalStatus, BiodataVisibilityStatus } from '@/types/biodata';
+
+// Create a compatible type that matches the drawer's needs
+interface Biodata extends Omit<BiodataProfile, 'email' | 'biodataApprovalStatus' | 'biodataVisibilityStatus'> {
+    username?: string | null;
+    email: string | null; // Allow null for compatibility
+    biodataApprovalStatus: string; // Use string for compatibility
+    biodataVisibilityStatus: string; // Use string for compatibility
 }
 
 interface EditBiodataDrawerProps {
@@ -163,7 +111,6 @@ export default function EditBiodataDrawer({
                 profilePicture: null,
                 profilePictureVisible: false,
                 email: '',
-                username: '',
                 guardianMobile: '',
                 ownMobile: '',
                 biodataApprovalStatus: 'pending',
@@ -342,6 +289,12 @@ export default function EditBiodataDrawer({
                 }, 'EditBiodataDrawer');
 
                 const cleanData = prepareDataForApi(editFormData);
+                console.log('🔧 Admin drawer sending update data:', cleanData);
+                console.log('🖼️ Profile picture in admin update:', {
+                    original: editFormData.profilePicture,
+                    cleaned: cleanData.profilePicture,
+                    isNull: cleanData.profilePicture === null
+                });
                 await adminApi.put(`/biodatas/${selectedBiodata.id}`, cleanData);
 
                 // Show success toast
@@ -524,15 +477,20 @@ export default function EditBiodataDrawer({
         if (!cleanData.biodataApprovalStatus) cleanData.biodataApprovalStatus = 'pending';
         if (!cleanData.biodataVisibilityStatus) cleanData.biodataVisibilityStatus = 'active';
 
-        // Remove any undefined or null fields
+        // Remove undefined fields, but keep null values for nullable fields
+        const nullableFields = ['profilePicture', 'email', 'guardianMobile', 'ownMobile', 'familyDetails', 'partnerDetails', 'healthIssues'];
+        
         Object.keys(cleanData).forEach(key => {
-            if (cleanData[key] === null || cleanData[key] === undefined) {
+            if (cleanData[key] === undefined) {
                 delete cleanData[key];
+            } else if (cleanData[key] === null && !nullableFields.includes(key)) {
+                delete cleanData[key]; // Remove null for non-nullable fields
             }
             // Convert empty strings to undefined for optional fields (except required ones)
-            if (cleanData[key] === '' && !requiredStringFields.includes(key)) {
+            else if (cleanData[key] === '' && !requiredStringFields.includes(key)) {
                 delete cleanData[key];
             }
+            // Keep null values for nullable fields like profilePicture
         });
 
         console.log('🧹 Cleaned data for API:', cleanData);

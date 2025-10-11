@@ -46,9 +46,11 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
 
   // Handle removing uploaded image
   const handleRemoveImage = useCallback(() => {
+    console.log('🗑️ Removing profile picture, current value:', data.profilePicture);
     updateData({ profilePicture: null });
+    console.log('🗑️ Profile picture removal data sent:', { profilePicture: null });
     logger.debug('Profile picture removed', {}, 'ContactInfoStep');
-  }, [updateData]);
+  }, [updateData, data.profilePicture]);
 
   return (
     <div className="space-y-8">

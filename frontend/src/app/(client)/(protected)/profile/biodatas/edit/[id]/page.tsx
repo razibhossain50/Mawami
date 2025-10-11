@@ -95,7 +95,44 @@ export default function BiodataForm() {
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to fetch biodata');
+                        const errorText = await response.text();
+                        console.error('Failed to fetch biodata:', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            error: errorText,
+                            biodataId: biodataId
+                        });
+                        
+                        // If it's a 404, the biodata doesn't exist
+                        if (response.status === 404) {
+                            router.replace('/profile/biodatas/edit/new');
+                            return { redirecting: true };
+                        }
+                        
+                        // If it's a 403, user doesn't own this biodata
+                        if (response.status === 403) {
+                            // Try to get their own biodata instead
+                            const currentResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/current`, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`,
+                                }
+                            });
+                            
+                            if (currentResponse.ok) {
+                                const currentData = await currentResponse.json();
+                                if (currentData && currentData.id) {
+                                    router.replace(`/profile/biodatas/edit/${currentData.id}`);
+                                    return { redirecting: true };
+                                }
+                            }
+                            
+                            // If no current biodata, redirect to create
+                            router.replace('/profile/biodatas/edit/new');
+                            return { redirecting: true };
+                        }
+                        
+                        throw new Error(`Failed to fetch biodata: ${response.status} ${response.statusText}`);
                     }
 
                     const data = await response.json();
@@ -193,6 +230,12 @@ export default function BiodataForm() {
             };
 
             console.log('📤 Sending payload to backend:', payload);
+            console.log('Profile picture in step data:', {
+                value: (convertedStepData as any).profilePicture,
+                isNull: (convertedStepData as any).profilePicture === null,
+                isUndefined: (convertedStepData as any).profilePicture === undefined,
+                type: typeof (convertedStepData as any).profilePicture
+            });
             const response = await apiRequest("PUT", "/api/biodatas/current", payload);
             const result = await response.json();
             console.log('📥 Received response from backend:', result);

@@ -13,6 +13,7 @@ import { handleApiError } from '@/services/error-handler';
 import { adminApi } from '@/services/api-client';
 import { resolveImageUrl } from '@/services/image-service';
 import EditBiodataDrawer from '@/components/admin/EditBiodataDrawer';
+import { BiodataProfile, BiodataApprovalStatus, BiodataVisibilityStatus } from '@/types/biodata';
 
 function capitalize(s: string) {
     return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
@@ -40,66 +41,7 @@ const statusOptions = [
     { name: "Inactive", uid: "inactive" },
 ];
 
-interface Biodata {
-    id: number;
-    step: number;
-    userId: number | null;
-    completedSteps: number[] | null;
-    partnerAgeMin: number;
-    partnerAgeMax: number;
-    sameAsPermanent: boolean;
-    religion: string;
-    biodataType: string;
-    maritalStatus: string;
-    dateOfBirth: string;
-    age: number;
-    height: string;
-    weight: number;
-    complexion: string;
-    profession: string;
-    bloodGroup: string;
-    permanentCountry: string;
-    permanentDivision: string;
-    permanentZilla: string;
-    permanentUpazilla: string;
-    permanentArea: string;
-    presentCountry: string;
-    presentDivision: string;
-    presentZilla: string;
-    presentUpazilla: string;
-    presentArea: string;
-    healthIssues: string;
-    educationMedium: string;
-    highestEducation: string;
-    instituteName: string;
-    subject: string;
-    passingYear: string;
-    result: string;
-    economicCondition: string;
-    fatherName: string;
-    fatherProfession: string;
-    fatherAlive: string;
-    motherName: string;
-    motherProfession: string;
-    motherAlive: string;
-    brothersCount: number;
-    sistersCount: number;
-    familyDetails: string;
-    partnerComplexion: string;
-    partnerHeight: string;
-    partnerEducation: string;
-    partnerProfession: string;
-    partnerLocation: string;
-    partnerDetails: string;
-    fullName: string;
-    profilePicture: string | null;
-    email: string | null;
-    username: string | null;
-    guardianMobile: string;
-    ownMobile: string;
-    biodataApprovalStatus: string;
-    biodataVisibilityStatus: string;
-}
+// Using BiodataProfile from types instead of local interface
 
 const statusColorMap: Record<string, ChipProps["color"]> = {
     pending: "warning",
@@ -124,7 +66,7 @@ const biodataTypeColorMap: Record<string, ChipProps["color"]> = {
 
 export default function Biodatas() {
     const { user } = useAuth();
-    const [biodatas, setBiodatas] = React.useState<Biodata[]>([]);
+    const [biodatas, setBiodatas] = React.useState<BiodataProfile[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [filterValue, setFilterValue] = React.useState("");
@@ -139,7 +81,7 @@ export default function Biodatas() {
     const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
     const [viewModalOpen, setViewModalOpen] = React.useState(false);
     const [editDrawerOpen, setEditDrawerOpen] = React.useState(false);
-    const [selectedBiodata, setSelectedBiodata] = React.useState<Biodata | null>(null);
+    const [selectedBiodata, setSelectedBiodata] = React.useState<BiodataProfile | null>(null);
     const [newStatus, setNewStatus] = React.useState<string>("");
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
@@ -148,20 +90,34 @@ export default function Biodatas() {
     const isSuperAdmin = user?.role === 'superadmin';
 
     // Handle biodata updated from drawer
-    const handleBiodataUpdated = (updatedBiodata: Biodata) => {
+    const handleBiodataUpdated = (updatedBiodata: any) => {
+        // Convert the drawer's Biodata type to BiodataProfile
+        const convertedBiodata: BiodataProfile = {
+            ...updatedBiodata,
+            email: updatedBiodata.email || '',
+            biodataApprovalStatus: updatedBiodata.biodataApprovalStatus as BiodataApprovalStatus,
+            biodataVisibilityStatus: updatedBiodata.biodataVisibilityStatus as BiodataVisibilityStatus
+        };
         setBiodatas(prev => prev.map(biodata =>
-            biodata.id === updatedBiodata.id ? updatedBiodata : biodata
+            biodata.id === convertedBiodata.id ? convertedBiodata : biodata
         ));
     };
 
     // Handle new biodata created from drawer
-    const handleBiodataCreated = (newBiodata: Biodata) => {
-        setBiodatas(prev => [newBiodata, ...prev]);
+    const handleBiodataCreated = (newBiodata: any) => {
+        // Convert the drawer's Biodata type to BiodataProfile
+        const convertedBiodata: BiodataProfile = {
+            ...newBiodata,
+            email: newBiodata.email || '',
+            biodataApprovalStatus: newBiodata.biodataApprovalStatus as BiodataApprovalStatus,
+            biodataVisibilityStatus: newBiodata.biodataVisibilityStatus as BiodataVisibilityStatus
+        };
+        setBiodatas(prev => [convertedBiodata, ...prev]);
     };
 
     // Handle status update
     const handleStatusUpdate = async () => {
-        if (!selectedBiodata || !newStatus || newStatus === selectedBiodata.biodataApprovalStatus) return;
+        if (!selectedBiodata || !newStatus || newStatus === (selectedBiodata.biodataApprovalStatus as string)) return;
 
         try {
             setIsUpdatingStatus(true);
@@ -176,11 +132,11 @@ export default function Biodatas() {
             // Update local state
             setBiodatas(prev => prev.map(biodata =>
                 biodata.id === selectedBiodata.id
-                    ? { ...biodata, biodataApprovalStatus: newStatus }
+                    ? { ...biodata, biodataApprovalStatus: newStatus as BiodataApprovalStatus }
                     : biodata
             ));
             // Update the selected biodata to reflect the change
-            setSelectedBiodata(prev => prev ? { ...prev, biodataApprovalStatus: newStatus } : null);
+            setSelectedBiodata(prev => prev ? { ...prev, biodataApprovalStatus: newStatus as BiodataApprovalStatus } : null);
             // Close the modal after successful update
             setViewModalOpen(false);
 
@@ -229,7 +185,7 @@ export default function Biodatas() {
                 setLoading(true);
                 logger.debug('Fetching all biodatas for admin', undefined, 'AdminBiodatas');
 
-                const data = await adminApi.get('/biodatas/admin/all') as Biodata[];
+                const data = await adminApi.get('/biodatas/admin/all') as BiodataProfile[];
                 
                 // Debug: Log the received data
                 console.log('=== Frontend Admin Biodatas Debug ===');
@@ -291,7 +247,7 @@ export default function Biodatas() {
     }, [page, filteredItems, rowsPerPage]);
 
     const sortedItems = React.useMemo(() => {
-        return [...items].sort((a: Biodata, b: Biodata) => {
+        return [...items].sort((a: BiodataProfile, b: BiodataProfile) => {
             // Only allow sorting on biodataApprovalStatus column
             if (sortDescriptor.column !== "biodataApprovalStatus") {
                 return 0;
@@ -305,8 +261,8 @@ export default function Biodatas() {
         });
     }, [sortDescriptor, items]);
 
-    const renderCell = React.useCallback((biodata: Biodata, columnKey: React.Key) => {
-        const cellValue = biodata[columnKey as keyof Biodata];
+    const renderCell = React.useCallback((biodata: BiodataProfile, columnKey: React.Key) => {
+        const cellValue = biodata[columnKey as keyof BiodataProfile];
 
         switch (columnKey) {
             case "fullName":
@@ -357,13 +313,8 @@ export default function Biodatas() {
                 return (
                     <div className="flex flex-col">
                         <span className="text-small">
-                            {biodata.username ? biodata.username : (biodata.email || "No email/username")}
+                            {biodata.email || "No email"}
                         </span>
-                        {biodata.username && biodata.email && (
-                            <span className="text-tiny text-default-400">
-                                Email: {biodata.email}
-                            </span>
-                        )}
                     </div>
                 );
             case "profilePicture":
@@ -404,7 +355,7 @@ export default function Biodatas() {
                             <DropdownMenu onAction={(key) => {
                                 if (key === "view") {
                                     setSelectedBiodata(biodata);
-                                    setNewStatus(biodata.biodataApprovalStatus || 'pending');
+                                    setNewStatus(biodata.biodataApprovalStatus as string || 'pending');
                                     setViewModalOpen(true);
                                 } else if (key === "edit") {
                                     setSelectedBiodata(biodata);
@@ -672,7 +623,7 @@ export default function Biodatas() {
                                             <Button
                                                 color="primary"
                                                 onPress={handleStatusUpdate}
-                                                isDisabled={!newStatus || newStatus === selectedBiodata.biodataApprovalStatus || isUpdatingStatus}
+                                                isDisabled={!newStatus || newStatus === (selectedBiodata.biodataApprovalStatus as string) || isUpdatingStatus}
                                                 isLoading={isUpdatingStatus}
                                             >
                                                 {isUpdatingStatus ? "Updating..." : "Update"}
@@ -1462,7 +1413,7 @@ export default function Biodatas() {
                                 color="primary"
                                 size="md"
                                 onPress={handleStatusUpdate}
-                                isDisabled={!newStatus || newStatus === selectedBiodata?.biodataApprovalStatus || isUpdatingStatus}
+                                isDisabled={!newStatus || newStatus === (selectedBiodata?.biodataApprovalStatus as string) || isUpdatingStatus}
                                 isLoading={isUpdatingStatus}
                                 variant="shadow"
                                 className="font-semibold px-6 min-w-[120px]"

@@ -15,8 +15,8 @@ interface ImageCropModalProps {
   onImageLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
   onCropChange: (crop: Crop) => void;
   onCropComplete: (crop: PixelCrop) => void;
-  imgRef: React.RefObject<HTMLImageElement>;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  imgRef: React.RefObject<HTMLImageElement | null>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   isUploading?: boolean;
   aspectRatio?: number;
   title?: string;
@@ -63,7 +63,7 @@ export function ImageCropModal({
               <p className="text-sm text-gray-600">Adjust the crop area and click confirm</p>
             </div>
           </ModalHeader>
-          
+
           <ModalBody>
             <div className="flex justify-center">
               <div className="relative max-w-full max-h-[400px] overflow-hidden rounded-lg border border-gray-200">
@@ -85,15 +85,15 @@ export function ImageCropModal({
                 </ReactCrop>
               </div>
             </div>
-            
+
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Tip:</strong> Drag the corners or edges to adjust the crop area. 
+                <strong>Tip:</strong> Drag the corners or edges to adjust the crop area.
                 The cropped image will be used as your profile picture.
               </p>
             </div>
           </ModalBody>
-          
+
           <ModalFooter>
             <Button
               variant="flat"
@@ -117,7 +117,7 @@ export function ImageCropModal({
           </ModalFooter>
         </ModalContent>
       </Modal>
-      
+
       {/* Hidden canvas for image processing */}
       <canvas
         ref={canvasRef}

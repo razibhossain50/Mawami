@@ -159,8 +159,36 @@ export class BiodataService {
     };
   }
 
-  update(id: number, updateBiodataDto: UpdateBiodataDto) {
-    return this.biodataRepository.update(id, updateBiodataDto);
+  async update(id: number, updateBiodataDto: UpdateBiodataDto) {
+    console.log('=== update method called ===');
+    console.log('Biodata ID:', id);
+    console.log('Update data:', updateBiodataDto);
+
+    // Apply the same null handling logic as updateByUserId
+    const filteredUpdateData: any = {};
+    
+    // Process each field, keeping null values for nullable fields
+    Object.entries(updateBiodataDto).forEach(([key, value]) => {
+      if (value !== undefined) {
+        // For nullable fields, explicitly allow null values
+        if (key === 'profilePicture' || key === 'email' || key === 'guardianMobile' || key === 'ownMobile') {
+          filteredUpdateData[key] = value; // This includes null
+        } else if (value !== null) {
+          filteredUpdateData[key] = value; // For other fields, skip null
+        }
+      }
+    });
+
+    console.log('Filtered update data for admin:', filteredUpdateData);
+    console.log('Profile picture in admin update:', {
+      original: updateBiodataDto.profilePicture,
+      filtered: filteredUpdateData.profilePicture,
+      isNull: updateBiodataDto.profilePicture === null,
+      willUpdate: Object.prototype.hasOwnProperty.call(filteredUpdateData, 'profilePicture')
+    });
+
+    await this.biodataRepository.update(id, filteredUpdateData);
+    return this.findOneInternal(id);
   }
 
   async updateByUserId(userId: number, updateBiodataDto: UpdateBiodataDto) {
@@ -189,10 +217,20 @@ export class BiodataService {
         console.log('Updating existing biodata with ID:', existingBiodata.id);
         console.log('Update data being sent to repository:', updateBiodataDto);
         
-        // Filter out undefined values and validate enum values
-        const filteredUpdateData = Object.fromEntries(
-          Object.entries(updateBiodataDto).filter(([_, value]) => value !== undefined)
-        );
+        // Filter out undefined values but keep null values (for fields that should be cleared)
+        const filteredUpdateData: any = {};
+        
+        // Process each field, keeping null values for nullable fields
+        Object.entries(updateBiodataDto).forEach(([key, value]) => {
+          if (value !== undefined) {
+            // For nullable fields, explicitly allow null values
+            if (key === 'profilePicture' || key === 'email' || key === 'guardianMobile' || key === 'ownMobile') {
+              filteredUpdateData[key] = value; // This includes null
+            } else if (value !== null) {
+              filteredUpdateData[key] = value; // For other fields, skip null
+            }
+          }
+        });
         
         // Validate and fix enum values
         if (filteredUpdateData.biodataApprovalStatus && typeof filteredUpdateData.biodataApprovalStatus === 'string') {
@@ -212,6 +250,12 @@ export class BiodataService {
         }
         
         console.log('Filtered update data:', filteredUpdateData);
+        console.log('Profile picture in update data:', {
+          original: updateBiodataDto.profilePicture,
+          filtered: filteredUpdateData.profilePicture,
+          isNull: updateBiodataDto.profilePicture === null,
+          willUpdate: Object.prototype.hasOwnProperty.call(filteredUpdateData, 'profilePicture')
+        });
         
         await this.biodataRepository.update(existingBiodata.id, filteredUpdateData);
         const result = await this.findOneInternal(existingBiodata.id);
