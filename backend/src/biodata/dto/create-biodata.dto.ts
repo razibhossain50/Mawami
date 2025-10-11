@@ -199,6 +199,10 @@ export class CreateBiodataDto {
   @IsOptional()
   profilePicture?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  profilePictureVisible?: boolean;
+
   @IsString()
   @IsOptional()
   email?: string;

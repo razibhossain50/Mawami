@@ -649,6 +649,27 @@ export default function Profile() {
               <div className="relative">
                 <div className="w-32 h-32 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center overflow-hidden border-4 border-white/30 shadow-xl">
                   {(() => {
+                    // Check if profile picture should be visible
+                    const shouldShowPicture = profile.profilePictureVisible || 
+                      (isAuthenticated && user && (
+                        user.id === profile.userId || // Owner can always see their own picture
+                        user.role === 'admin' // Admin can always see pictures
+                      ));
+
+                    if (!shouldShowPicture || !profile.profilePicture) {
+                      return (
+                        <div className="flex flex-col items-center justify-center text-white/80">
+                          <User className="h-16 w-16 text-white" />
+                          {!profile.profilePictureVisible && profile.profilePicture && (
+                            <div className="flex items-center gap-1 mt-2">
+                              <Lock className="h-3 w-3" />
+                              <span className="text-xs">Private</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     const { url, unoptimized } = resolveImageUrl(profile.profilePicture);
                     if (!url) {
                       return <User className="h-16 w-16 text-white" />;

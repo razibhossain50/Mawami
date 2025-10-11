@@ -110,6 +110,7 @@ export interface BiodataProfile {
   partnerDetails: string;
   fullName: string;
   profilePicture: string | null;
+  profilePictureVisible: boolean;
   email: string;
   guardianMobile: string;
   ownMobile: string;

@@ -86,7 +86,7 @@ import { seedDatabase } from './database-seed';
 async function runDatabaseMigration() {
   try {
     console.log('🚀 Starting database migration...');
-    
+
     // Initialize connection
     console.log('🔄 Initializing database connection...');
     try {
@@ -114,7 +114,7 @@ async function runDatabaseMigration() {
       try {
         await adminDataSource.initialize();
         // Sanitize DB name to avoid injection and ensure valid identifier
-  const safeDbName = (dbName || 'finder').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase() || 'finder';
+        const safeDbName = (dbName || 'finder').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase() || 'finder';
         // Check existence then create
         const exists = await adminDataSource.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [safeDbName]);
         if (exists.length === 0) {
@@ -123,7 +123,7 @@ async function runDatabaseMigration() {
         } else {
           console.log('ℹ️ Database already exists, continuing...');
         }
-  } finally {
+      } finally {
         if (adminDataSource.isInitialized) {
           await adminDataSource.destroy();
         }
@@ -151,14 +151,14 @@ async function runDatabaseMigration() {
     const executedMigrations = await AppDataSource.query(`
       SELECT * FROM migrations WHERE name = 'MainOrchestrator'
     `);
-    
+
     if (executedMigrations.length === 0) {
       console.log('📋 Main orchestrator not found, running all migrations...');
-      
+
       // Run the main orchestrator
       const orchestrator = new MainOrchestrator();
       await orchestrator.up(AppDataSource.createQueryRunner());
-      
+
       console.log('✅ Main orchestrator completed successfully');
     } else {
       console.log('✅ Main orchestrator already executed. Database is up to date.');
@@ -169,7 +169,7 @@ async function runDatabaseMigration() {
     const allMigrations = await AppDataSource.query(`
       SELECT * FROM migrations ORDER BY timestamp DESC;
     `);
-    
+
     console.log(`📊 Total executed migrations: ${allMigrations.length}`);
     if (allMigrations.length > 0) {
       console.log('📋 Executed migrations:');
@@ -181,19 +181,19 @@ async function runDatabaseMigration() {
     // Run seed data
     console.log('🔄 Running seed data...');
     await seedDatabase(AppDataSource);
-    
+
     console.log('🎉 Database migration completed successfully!');
-    
+
   } catch (error: any) {
     console.error('❌ Database migration failed:', error);
-    
+
     // If database doesn't exist, provide helpful error message
     if (error?.code === '3D000') { // PostgreSQL error code for database does not exist
       console.log('📋 Database does not exist. Please create it manually or check your connection settings.');
       console.log('💡 You can create the database using:');
       console.log('   createdb -h localhost -U postgres finder');
     }
-    
+
     process.exit(1);
   } finally {
     if (AppDataSource.isInitialized) {

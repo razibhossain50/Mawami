@@ -106,6 +106,7 @@ const statusColorMap: Record<string, ChipProps["color"]> = {
     approved: "success",
     rejected: "danger",
     inactive: "default",
+    in_progress: "primary",
 };
 
 const biodataTypeColorMap: Record<string, ChipProps["color"]> = {
@@ -229,6 +230,19 @@ export default function Biodatas() {
                 logger.debug('Fetching all biodatas for admin', undefined, 'AdminBiodatas');
 
                 const data = await adminApi.get('/biodatas/admin/all') as Biodata[];
+                
+                // Debug: Log the received data
+                console.log('=== Frontend Admin Biodatas Debug ===');
+                console.log('Received biodatas:', data);
+                data.forEach((biodata, index) => {
+                    console.log(`Biodata ${index + 1}:`, {
+                        id: biodata.id,
+                        fullName: biodata.fullName,
+                        biodataApprovalStatus: biodata.biodataApprovalStatus,
+                        biodataVisibilityStatus: biodata.biodataVisibilityStatus
+                    });
+                });
+                
                 setBiodatas(data);
 
                 logger.info('Biodatas fetched successfully', { count: data.length }, 'AdminBiodatas');
@@ -322,6 +336,13 @@ export default function Biodatas() {
                     </Chip>
                 );
             case "biodataApprovalStatus":
+                // Debug: Log the status value
+                console.log(`Rendering status for biodata ${biodata.id}:`, {
+                    originalStatus: biodata.biodataApprovalStatus,
+                    fallbackStatus: biodata.biodataApprovalStatus || 'pending',
+                    type: typeof biodata.biodataApprovalStatus
+                });
+                
                 return (
                     <Chip
                         className="capitalize"

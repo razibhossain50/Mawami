@@ -2,16 +2,18 @@
 import React from "react";
 import {
     Drawer, DrawerContent, DrawerHeader, DrawerBody, DrawerFooter,
-    Input, Button, Select, SelectItem, Textarea, Card, CardBody, CardHeader, Checkbox, DatePicker, Tooltip, Slider
+    Input, Button, Select, SelectItem, Textarea, Card, CardBody, CardHeader, Checkbox, DatePicker, Tooltip, Slider, Switch
 } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
-import { Info, Upload } from "lucide-react";
+import { Info, Upload, Trash2 } from "lucide-react";
 import { LocationSelector } from '@/components/form/LocationSelector';
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
 import { adminApi } from '@/services/api-client';
 import { useToast } from '@/context/ToastContext';
 import { FileUploadResponse } from '@/types/api';
+import { ImageUploadWithCrop } from '@/components/common/ImageUploadWithCrop';
+import { ImageCropResult } from '@/hooks/useImageCrop';
 
 interface Biodata {
     id: number;
@@ -66,6 +68,7 @@ interface Biodata {
     partnerDetails: string;
     fullName: string;
     profilePicture: string | null;
+    profilePictureVisible: boolean;
     email: string | null;
     username: string | null;
     guardianMobile: string;
@@ -95,7 +98,6 @@ export default function EditBiodataDrawer({
     const [touchedFields, setTouchedFields] = React.useState<Set<string>>(new Set());
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = React.useState(false);
     const [calculatedAge, setCalculatedAge] = React.useState<number | null>(null);
-    const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
     const [isUploading, setIsUploading] = React.useState(false);
     const { addToast } = useToast();
 
@@ -159,6 +161,7 @@ export default function EditBiodataDrawer({
                 partnerDetails: '',
                 fullName: '',
                 profilePicture: null,
+                profilePictureVisible: false,
                 email: '',
                 username: '',
                 guardianMobile: '',
@@ -168,6 +171,8 @@ export default function EditBiodataDrawer({
             });
         }
     }, [selectedBiodata]);
+
+    // Cleanup object URLs to prevent memory leaks
 
     // Age calculation effect
     React.useEffect(() => {
@@ -479,6 +484,9 @@ export default function EditBiodataDrawer({
         if (cleanData.sameAsPermanent === undefined || cleanData.sameAsPermanent === null) {
             cleanData.sameAsPermanent = false;
         }
+        if (cleanData.profilePictureVisible === undefined || cleanData.profilePictureVisible === null) {
+            cleanData.profilePictureVisible = false;
+        }
 
         // Ensure required string fields are not empty
         const requiredStringFields = [
@@ -531,57 +539,53 @@ export default function EditBiodataDrawer({
         return cleanData;
     };
 
-    // Handle file upload
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            // Validate file type
-            if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
-                addToast("Please upload only JPEG or PNG images.", 'error');
-                return;
-            }
+    // Handle image crop completion
+    const handleImageCropComplete = React.useCallback(async (result: ImageCropResult) => {
+        try {
+            setIsUploading(true);
 
-            // Validate file size (5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                addToast("File size must be less than 5MB.", 'error');
-                return;
-            }
+            // Create a File object from the blob
+            const croppedFile = new File([result.blob], 'cropped-profile.jpg', {
+                type: 'image/jpeg',
+            });
 
-            try {
-                setIsUploading(true);
+            console.log('📤 Starting file upload:', {
+                fileName: croppedFile.name,
+                fileSize: croppedFile.size,
+                fileType: croppedFile.type,
+                endpoint: '/upload/profile-picture'
+            });
 
-                console.log('📤 Starting file upload:', {
-                    fileName: file.name,
-                    fileSize: file.size,
-                    fileType: file.type,
-                    endpoint: '/api/upload/profile-picture'
-                });
+            // Upload file to backend using admin API
+            const uploadResult = await adminApi.uploadFile('/upload/profile-picture', croppedFile, 'profilePicture') as FileUploadResponse;
 
-                // Upload file to backend using admin API
-                const result = await adminApi.uploadFile('/upload/profile-picture', file, 'profilePicture') as FileUploadResponse;
+            console.log('✅ Upload successful:', uploadResult);
 
-                console.log('✅ Upload successful:', result);
+            // Store the URL returned from backend
+            setEditFormData(prev => ({ ...prev, profilePicture: uploadResult.url }));
 
-                setUploadedFile(file);
-                // Store the URL returned from backend
-                setEditFormData(prev => ({ ...prev, profilePicture: result.url }));
-
-                logger.debug('File uploaded successfully', result, 'EditBiodataDrawer');
-                addToast('Profile picture uploaded successfully!', 'success');
-            } catch (error) {
-                const appError = handleApiError(error, 'EditBiodataDrawer');
-                console.error('❌ Upload failed:', {
-                    error: appError,
-                    originalError: error,
-                    fileName: file.name
-                });
-                logger.error('Upload error', appError, 'EditBiodataDrawer');
-                addToast(`Failed to upload file: ${appError.message}`, 'error');
-            } finally {
-                setIsUploading(false);
-            }
+            logger.debug('File uploaded successfully', uploadResult, 'EditBiodataDrawer');
+            addToast('Profile picture uploaded successfully!', 'success');
+        } catch (error) {
+            const appError = handleApiError(error, 'EditBiodataDrawer');
+            console.error('❌ Upload failed:', {
+                error: appError,
+                originalError: error
+            });
+            logger.error('Upload error', appError, 'EditBiodataDrawer');
+            addToast(`Failed to upload file: ${appError.message}`, 'error');
+            throw error; // Re-throw to let the hook handle the toast
+        } finally {
+            setIsUploading(false);
         }
-    };
+    }, [addToast]);
+
+    // Handle remove profile picture
+    const handleRemoveProfilePicture = React.useCallback(() => {
+        setEditFormData(prev => ({ ...prev, profilePicture: null }));
+        addToast('Profile picture removed successfully', 'success');
+        logger.debug('Profile picture removed', {}, 'EditBiodataDrawer');
+    }, [addToast]);
 
     const handleClose = () => {
         setEditFormData({});
@@ -589,7 +593,6 @@ export default function EditBiodataDrawer({
         setIsUpdatingBiodata(false);
         setTouchedFields(new Set());
         setHasAttemptedSubmit(false);
-        setUploadedFile(null);
         setIsUploading(false);
         onClose();
     };
@@ -1482,79 +1485,68 @@ export default function EditBiodataDrawer({
 
                             {/* Profile Picture Upload */}
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-sm font-medium">Profile Picture</span>
-                                    <Tooltip content="Profile pic is optional. Only JPEG/PNG Image">
-                                        <Info className="w-4 h-4 text-slate-400 cursor-help" />
-                                    </Tooltip>
-                                </div>
 
-                                <Card className={`border-2 border-dashed transition-colors ${isUploading ? 'border-blue-300 bg-blue-50' :
-                                    uploadedFile || editFormData.profilePicture ? 'border-emerald-300 bg-emerald-50' :
-                                        'border-slate-300 hover:border-slate-400'
-                                    }`}>
-                                    <CardBody className="p-6">
-                                        <div className="text-center">
-                                            {isUploading ? (
-                                                <div className="space-y-2">
-                                                    <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                                                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                                    </div>
-                                                    <p className="text-sm font-medium text-blue-900">Uploading...</p>
-                                                    <p className="text-xs text-blue-600">Please wait while we upload your image</p>
-                                                </div>
-                                            ) : uploadedFile || editFormData.profilePicture ? (
-                                                <div className="space-y-2">
-                                                    <div className="w-16 h-16 mx-auto bg-emerald-100 rounded-full flex items-center justify-center">
-                                                        <Upload className="w-8 h-8 text-emerald-600" />
-                                                    </div>
-                                                    <p className="text-sm font-medium text-emerald-900">
-                                                        {uploadedFile?.name || 'Profile picture uploaded'}
-                                                    </p>
-                                                    <p className="text-xs text-emerald-600">✓ File uploaded successfully</p>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setUploadedFile(null);
-                                                            setEditFormData(prev => ({ ...prev, profilePicture: null }));
-                                                        }}
-                                                        className="text-xs text-slate-500 hover:text-slate-700 underline"
-                                                    >
-                                                        Upload different image
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center">
-                                                        <Upload className="w-8 h-8 text-slate-400" />
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="profilePicture" className="cursor-pointer">
-                                                            <span className="text-primary hover:text-primary/80 font-medium">
-                                                                Click to upload
-                                                            </span>
-                                                            <span className="text-slate-500"> or drag and drop</span>
-                                                        </label>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500">PNG or JPG (max. 5MB)</p>
-                                                </div>
-                                            )}
-                                            <input
-                                                type="file"
-                                                id="profilePicture"
-                                                className="hidden"
-                                                accept="image/jpeg,image/jpg,image/png"
-                                                onChange={handleFileUpload}
-                                                disabled={isUploading}
-                                            />
-                                        </div>
-                                    </CardBody>
-                                </Card>
+                                <ImageUploadWithCrop
+                                    onCropComplete={handleImageCropComplete}
+                                    onRemove={handleRemoveProfilePicture}
+                                    currentImageUrl={editFormData.profilePicture || undefined}
+                                    aspectRatio={1}
+                                    maxFileSize={5 * 1024 * 1024}
+                                    title="Profile Picture"
+                                    description="Upload a clear photo. You'll be able to crop it after selection."
+                                    className="w-full"
+                                />
 
                                 <p className="text-xs text-slate-500 flex items-center gap-1">
                                     <Info className="w-3 h-3" />
                                     Profile pic is optional. Only JPEG/PNG Image
                                 </p>
+                            </div>
+
+                            {/* Profile Picture Visibility Toggle */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <p className="text-sm font-medium text-foreground">
+                                                Make Profile Picture Public
+                                            </p>
+                                            <Tooltip content="When enabled, your profile picture will be visible to other users browsing biodatas">
+                                                <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                                            </Tooltip>
+                                        </div>
+                                        <p className="text-xs text-slate-600">
+                                            {editFormData.profilePictureVisible
+                                                ? "✓ Visible to everyone"
+                                                : "🔒 Only visible to you"
+                                            }
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs font-medium ${editFormData.profilePictureVisible
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-500'
+                                            }`}>
+                                            {editFormData.profilePictureVisible ? 'Public' : 'Private'}
+                                        </span>
+                                        <Switch
+                                            isSelected={editFormData.profilePictureVisible || false}
+                                            onValueChange={(value) => {
+                                                setEditFormData(prev => ({ ...prev, profilePictureVisible: value }));
+                                                addToast(
+                                                    value
+                                                        ? 'Profile picture is now public'
+                                                        : 'Profile picture is now private',
+                                                    'success'
+                                                );
+                                            }}
+                                            color="success"
+                                            size="md"
+                                        />
+                                    </div>
+                                </div>
+
+
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

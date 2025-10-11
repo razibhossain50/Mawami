@@ -94,45 +94,20 @@ export class BiodataService {
 
       // Log all field names to see what's available
       console.log('Available fields:', Object.keys(allBiodatas[0]));
+      
+      // Log all biodatas with their statuses
+      console.log('All biodatas statuses:');
+      allBiodatas.forEach(biodata => {
+        console.log(`ID ${biodata.id}: approvalStatus="${biodata.biodataApprovalStatus}", visibilityStatus="${biodata.biodataVisibilityStatus}"`);
+      });
     } else {
       console.log('No biodatas found in database');
     }
 
-    // Handle both old and new column structures
-    // If new columns don't exist, map from old status field
-    const processedBiodatas = allBiodatas.map(biodata => {
-      // If new columns don't exist, set defaults based on old status
-      if (!biodata.biodataApprovalStatus && (biodata as any).status) {
-        const oldStatus = (biodata as any).status;
-        // Map old status to new approval status
-        switch (oldStatus) {
-          case 'Active':
-            biodata.biodataApprovalStatus = BiodataApprovalStatus.APPROVED;
-            break;
-          case 'Pending':
-            biodata.biodataApprovalStatus = BiodataApprovalStatus.PENDING;
-            break;
-          case 'Rejected':
-            biodata.biodataApprovalStatus = BiodataApprovalStatus.REJECTED;
-            break;
-          case 'Inactive':
-            biodata.biodataApprovalStatus = BiodataApprovalStatus.INACTIVE;
-            break;
-          default:
-            biodata.biodataApprovalStatus = BiodataApprovalStatus.PENDING;
-        }
-      }
-
-      // Set default visibility status if not exists
-      if (!biodata.biodataVisibilityStatus) {
-        biodata.biodataVisibilityStatus = BiodataVisibilityStatus.ACTIVE;
-      }
-
-      return biodata;
-    });
-
-    console.log('Processed biodatas with status mapping');
-    return processedBiodatas;
+    // Return raw biodatas without transformation for debugging
+    // TODO: Re-enable transformation logic once issue is resolved
+    console.log('Returning raw biodatas without transformation');
+    return allBiodatas;
   }
 
   // Owner method to get their own biodata regardless of status

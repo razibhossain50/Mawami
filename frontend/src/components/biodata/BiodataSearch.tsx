@@ -19,6 +19,7 @@ interface Biodata {
     id: number;
     fullName: string;
     profilePicture?: string;
+    profilePictureVisible?: boolean;
     age: number;
     biodataType: string;
     profession: string;
@@ -682,7 +683,7 @@ export const BiodataSearch = () => {
                                                 {
                                                     biodata.biodataType == "Male" ? (
                                                         <Avatar
-                                                            src={biodata.profilePicture ?
+                                                            src={(biodata.profilePicture && biodata.profilePictureVisible) ?
                                                                 getImageUrl(biodata.profilePicture) :
                                                                 "icons/male.png"}
                                                             name={biodata.fullName}
@@ -693,7 +694,7 @@ export const BiodataSearch = () => {
 
                                                     ) : (
                                                         <Avatar
-                                                            src={biodata.profilePicture ?
+                                                            src={(biodata.profilePicture && biodata.profilePictureVisible) ?
                                                                 getImageUrl(biodata.profilePicture) :
                                                                 "icons/female.png"}
                                                             name={biodata.fullName}

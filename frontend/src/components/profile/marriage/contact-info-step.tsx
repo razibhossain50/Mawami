@@ -1,13 +1,13 @@
 'use client';
-import { Input, Card, CardBody, Tooltip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
-import { Info, Upload, Crop as CropIcon, X, Check } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
-import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { Input, Card, CardBody, Tooltip, Switch } from "@heroui/react";
+import { Info } from "lucide-react";
+import { useState, useCallback } from "react";
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
 import { apiClient } from '@/services/api-client';
 import { FileUploadResponse } from '@/types/api';
+import { ImageUploadWithCrop } from '@/components/common/ImageUploadWithCrop';
+import { ImageCropResult } from '@/hooks/useImageCrop';
 
 interface ContactInfoStepProps {
   data: Record<string, unknown>;
@@ -16,151 +16,39 @@ interface ContactInfoStepProps {
 }
 
 export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepProps) {
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [showCropModal, setShowCropModal] = useState(false);
-  const [imageSrc, setImageSrc] = useState<string>('');
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const imgRef = useRef<HTMLImageElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Helper function to create initial crop
-  const centerAspectCrop = (mediaWidth: number, mediaHeight: number, aspect: number) => {
-    return centerCrop(
-      makeAspectCrop(
-        {
-          unit: '%',
-          width: 90,
-        },
-        aspect,
-        mediaWidth,
-        mediaHeight,
-      ),
-      mediaWidth,
-      mediaHeight,
-    );
-  };
-
-  // Handle file selection
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
-        alert("Please upload only JPEG or PNG images.");
-        return;
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size must be less than 5MB.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        setImageSrc(reader.result?.toString() || '');
-        setShowCropModal(true);
-      });
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Handle image load in crop modal
-  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, 1)); // 1:1 aspect ratio for profile pictures
-  }, []);
-
-  // Generate cropped image
-  const getCroppedImg = useCallback(async (image: HTMLImageElement, crop: PixelCrop): Promise<Blob> => {
-    const canvas = canvasRef.current;
-    if (!canvas) throw new Error('Canvas not found');
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas context not found');
-
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-
-    canvas.width = crop.width;
-    canvas.height = crop.height;
-
-    ctx.drawImage(
-      image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
-      0,
-      0,
-      crop.width,
-      crop.height,
-    );
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-      }, 'image/jpeg', 0.9);
-    });
-  }, []);
-
-  // Handle crop confirmation
-  const handleCropConfirm = async () => {
-    if (!completedCrop || !imgRef.current) return;
-
+  // Handle image crop completion
+  const handleImageCropComplete = useCallback(async (result: ImageCropResult) => {
     try {
       setIsUploading(true);
-      const croppedImageBlob = await getCroppedImg(imgRef.current, completedCrop);
 
       // Create a File object from the blob
-      const croppedFile = new File([croppedImageBlob], 'cropped-profile.jpg', {
+      const croppedFile = new File([result.blob], 'cropped-profile.jpg', {
         type: 'image/jpeg',
       });
 
       // Upload the cropped file
-      const result = await apiClient.uploadFile('/api/upload/profile-picture', croppedFile, 'profilePicture') as FileUploadResponse;
+      const uploadResult = await apiClient.uploadFile('/api/upload/profile-picture', croppedFile, 'profilePicture', { requireAuth: true }) as FileUploadResponse;
 
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(croppedImageBlob);
-      setPreviewUrl(previewUrl);
-      setUploadedFile(croppedFile);
-      updateData({ profilePicture: result.url });
+      // Update the data with the uploaded image URL
+      updateData({ profilePicture: uploadResult.url });
 
-      setShowCropModal(false);
-      logger.debug('File uploaded successfully', result, 'Contact-info-step');
+      logger.debug('File uploaded successfully', uploadResult, 'Contact-info-step');
     } catch (error) {
       const appError = handleApiError(error, 'Component');
       logger.error('Upload error', appError, 'Contact-info-step');
-      alert('Failed to upload file. Please try again.');
+      throw error; // Re-throw to let the hook handle the toast
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [updateData]);
 
   // Handle removing uploaded image
-  const handleRemoveImage = () => {
-    setUploadedFile(null);
-    setPreviewUrl('');
+  const handleRemoveImage = useCallback(() => {
     updateData({ profilePicture: null });
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-  };
-
-  // Get the image URL to display (either from local preview or saved data)
-  const getImageUrl = () => {
-    if (previewUrl) return previewUrl;
-    if (data.profilePicture && typeof data.profilePicture === 'string') return data.profilePicture;
-    return null;
-  };
-
-  // Check if we have an image (either uploaded in this session or previously saved)
-  const hasImage = () => {
-    return !!(previewUrl || (data.profilePicture && typeof data.profilePicture === 'string'));
-  };
+    logger.debug('Profile picture removed', {}, 'ContactInfoStep');
+  }, [updateData]);
 
   return (
     <div className="space-y-8">
@@ -193,98 +81,64 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
 
           {/* Profile Picture */}
           <div className="col-span-2 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="text-sm font-medium">Profile Picture</div>
-              <Tooltip content="Only JPEG/PNG Image">
-                <Info className="w-4 h-4 text-slate-400 cursor-help" />
-              </Tooltip>
-            </div>
 
-            <Card className={`border-2 border-dashed transition-colors ${isUploading ? 'border-blue-300 bg-blue-50' :
-              hasImage() ? 'border-emerald-300 bg-emerald-50' :
-                'border-slate-300 hover:border-slate-400'
-              }`}>
-              <CardBody className="p-6">
-                <div className="text-center">
-                  {isUploading ? (
-                    <div className="space-y-2">
-                      <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                      <p className="text-sm font-medium text-blue-900">Processing...</p>
-                      <p className="text-xs text-blue-600">Please wait while we process your image</p>
-                    </div>
-                  ) : hasImage() ? (
-                    <div className="space-y-4">
-                      <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-emerald-200">
-                        <img
-                          src={getImageUrl()!}
-                          alt="Profile preview"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-emerald-900">Profile picture uploaded</p>
-                        <p className="text-xs text-emerald-600">✓ Image processed successfully</p>
-                        <div className="flex gap-2 justify-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const imageUrl = getImageUrl();
-                              if (imageUrl) {
-                                setImageSrc(imageUrl);
-                                setShowCropModal(true);
-                              }
-                            }}
-                            className="text-xs text-blue-600 hover:text-blue-700 underline flex items-center gap-1"
-                          >
-                            <CropIcon className="w-3 h-3" />
-                            Crop again
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="text-xs text-slate-500 hover:text-slate-700 underline flex items-center gap-1"
-                          >
-                            <X className="w-3 h-3" />
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center">
-                        <Upload className="w-8 h-8 text-slate-400" />
-                      </div>
-                      <div>
-                        <label htmlFor="profilePicture" className="cursor-pointer">
-                          <span className="text-primary hover:text-primary/80 font-medium">
-                            Click to upload
-                          </span>
-                          <span className="text-slate-500"> or drag and drop</span>
-                        </label>
-                      </div>
-                      <p className="text-xs text-slate-500">PNG or JPG (max. 5MB)</p>
-                      <p className="text-xs text-slate-400">You'll be able to crop after selecting</p>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    id="profilePicture"
-                    className="hidden"
-                    accept="image/jpeg,image/jpg,image/png"
-                    onChange={handleFileSelect}
-                    disabled={isUploading}
-                  />
-                </div>
-              </CardBody>
-            </Card>
+            <ImageUploadWithCrop
+              onCropComplete={handleImageCropComplete}
+              onRemove={handleRemoveImage}
+              currentImageUrl={data.profilePicture as string}
+              aspectRatio={1}
+              maxFileSize={5 * 1024 * 1024}
+              title="Profile Picture"
+              description="Upload a clear photo of yourself. You'll be able to crop it after selection."
+              className="w-full"
+            />
 
             <p className="text-xs text-slate-500 flex items-center gap-1">
               <Info className="w-3 h-3" />
               Profile pic is optional. You can crop and adjust after upload.
             </p>
+          </div>
+
+          {/* Profile Picture Visibility Toggle */}
+          <div className="col-span-2">
+            <Card className="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 hover:border-slate-300 transition-colors">
+              <CardBody className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="text-sm font-medium text-foreground">
+                        Make Profile Picture Public
+                      </h4>
+                      <Tooltip content="When enabled, your profile picture will be visible to other users browsing biodatas">
+                        <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                      </Tooltip>
+                    </div>
+                    <p className="text-xs text-slate-600">
+                      {(data.profilePictureVisible as boolean)
+                        ? "✓ Visible to everyone"
+                        : "🔒 Only visible to you and admins"
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-medium ${(data.profilePictureVisible as boolean)
+                      ? 'text-emerald-600'
+                      : 'text-slate-500'
+                      }`}>
+                      {(data.profilePictureVisible as boolean) ? 'Public' : 'Private'}
+                    </span>
+                    <Switch
+                      isSelected={(data.profilePictureVisible as boolean) || false}
+                      onValueChange={(value) => {
+                        updateData({ profilePictureVisible: value });
+                      }}
+                      color="success"
+                      size="md"
+                    />
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
           </div>
 
           {/* Email */}
@@ -335,75 +189,6 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
         </div>
       </div>
 
-      {/* Crop Modal */}
-      <Modal
-        isOpen={showCropModal}
-        onClose={() => setShowCropModal(false)}
-        size="2xl"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <h3 className="text-lg font-semibold">Crop Your Profile Picture</h3>
-            <p className="text-sm text-slate-500">Adjust the crop area to get the perfect profile picture</p>
-          </ModalHeader>
-          <ModalBody className="p-6">
-            <div className="space-y-4">
-              {imageSrc && (
-                <div className="max-h-96 overflow-hidden rounded-lg border">
-                  <ReactCrop
-                    crop={crop}
-                    onChange={(_, percentCrop) => setCrop(percentCrop)}
-                    onComplete={(c) => setCompletedCrop(c)}
-                    aspect={1}
-                    minWidth={100}
-                    minHeight={100}
-                    circularCrop
-                  >
-                    <img
-                      ref={imgRef}
-                      alt="Crop preview"
-                      src={imageSrc}
-                      onLoad={onImageLoad}
-                      className="max-w-full h-auto"
-                    />
-                  </ReactCrop>
-                </div>
-              )}
-              <div className="text-center">
-                <p className="text-sm text-slate-600">
-                  Drag the corners to adjust the crop area. The image will be cropped to a perfect circle.
-                </p>
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => setShowCropModal(false)}
-              disabled={isUploading}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleCropConfirm}
-              disabled={!completedCrop || isUploading}
-              startContent={isUploading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-            >
-              {isUploading ? 'Processing...' : 'Crop & Upload'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Hidden canvas for image processing */}
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

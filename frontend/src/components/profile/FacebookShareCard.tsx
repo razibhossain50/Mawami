@@ -11,7 +11,9 @@ interface FacebookShareCardProps {
 }
 
 const FacebookShareCard: React.FC<FacebookShareCardProps> = ({ profile, biodataId }) => {
-  const { url: profileImageUrl, unoptimized } = resolveImageUrl(profile.profilePicture);
+  const { url: profileImageUrl, unoptimized } = resolveImageUrl(
+    profile.profilePictureVisible ? profile.profilePicture : null
+  );
   
   // Determine gender-specific fields
   const isMale = profile.biodataType?.toLowerCase() === 'male' || profile.biodataType?.toLowerCase() === 'groom';

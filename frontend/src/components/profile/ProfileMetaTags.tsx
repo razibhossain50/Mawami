@@ -9,7 +9,9 @@ interface ProfileMetaTagsProps {
 }
 
 const ProfileMetaTags: React.FC<ProfileMetaTagsProps> = ({ profile, biodataId }) => {
-  const { url: profileImageUrl } = resolveImageUrl(profile.profilePicture);
+  const { url: profileImageUrl } = resolveImageUrl(
+    profile.profilePictureVisible ? profile.profilePicture : null
+  );
   const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
   
   // Determine gender-specific default image

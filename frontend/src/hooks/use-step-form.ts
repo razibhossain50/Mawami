@@ -58,6 +58,7 @@ const biodataSchema = z.object({
   // Contact Information
   fullName: z.string().min(1, "Full name is required"),
   profilePicture: z.string().optional(),
+  profilePictureVisible: z.boolean().default(false),
   email: z.string().email("Invalid email address"),
   guardianMobile: z.string().min(1, "Guardian's mobile is required"),
   ownMobile: z.string().min(1, "Own mobile is required"),
@@ -120,6 +121,7 @@ const stepSchemas = [
   // Step 5: Contact Information
   biodataSchema.pick({
     fullName: true,
+    profilePictureVisible: true,
     email: true,
     guardianMobile: true,
     ownMobile: true,
@@ -135,6 +137,7 @@ export function useStepForm(totalSteps: number) {
     partnerAgeMin: 18,
     partnerAgeMax: 35,
     sameAsPermanent: false,
+    profilePictureVisible: false,
   });
   const [errors, setErrors] = useState<any>({});
 

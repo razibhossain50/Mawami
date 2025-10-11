@@ -165,6 +165,9 @@ export class Biodata {
   @Column({ nullable: true })
   profilePicture: string;
 
+  @Column({ default: false })
+  profilePictureVisible: boolean;
+
   @Column({ nullable: true })
   email: string;
 
