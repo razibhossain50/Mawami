@@ -170,7 +170,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { userId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(result).toEqual(expectedBiodata);
     });
@@ -183,7 +183,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { userId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(result).toBeNull();
     });
@@ -220,7 +220,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { userId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(mockRepository.update).toHaveBeenCalledWith(existingBiodata.id, updateDto);
       expect(result).toEqual(updatedBiodata);
@@ -254,7 +254,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { userId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(mockRepository.create).toHaveBeenCalledWith({
         ...updateDto,
@@ -323,7 +323,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { id: biodataId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(result).toBe(true);
     });
@@ -343,7 +343,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { id: biodataId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(result).toBe(false);
     });
@@ -358,7 +358,7 @@ describe('BiodataService', () => {
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { id: biodataId },
-        relations: ['user']
+        relations: { user: true }
       });
       expect(result).toBe(false);
     });

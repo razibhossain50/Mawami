@@ -35,7 +35,7 @@ export class BiodataService {
 
   async findAll() {
     const allBiodatas = await this.biodataRepository.find({
-      relations: ['user']
+      relations: { user: true }
     });
 
     // Only show biodatas that are approved and active (visible to public)
@@ -45,7 +45,7 @@ export class BiodataService {
   async findOne(id: number) {
     const biodata = await this.biodataRepository.findOne({
       where: { id },
-      relations: ['user']
+      relations: { user: true }
     });
 
     if (!biodata || !biodata.isVisibleToPublic()) {
@@ -58,7 +58,7 @@ export class BiodataService {
   findByUserId(userId: number) {
     return this.biodataRepository.findOne({
       where: { userId },
-      relations: ['user']
+      relations: { user: true }
     });
   }
 
@@ -66,7 +66,7 @@ export class BiodataService {
   private findOneInternal(id: number) {
     return this.biodataRepository.findOne({
       where: { id },
-      relations: ['user']
+      relations: { user: true }
     });
   }
 
@@ -74,7 +74,7 @@ export class BiodataService {
   // Temporarily show all biodatas for debugging
   async findAllForAdmin() {
     const allBiodatas = await this.biodataRepository.find({
-      relations: ['user'],
+      relations: { user: true },
       order: { id: 'DESC' }
     });
 
@@ -114,7 +114,7 @@ export class BiodataService {
   findOneForOwner(id: number) {
     return this.biodataRepository.findOne({
       where: { id },
-      relations: ['user']
+      relations: { user: true }
     });
   }
 

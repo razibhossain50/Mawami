@@ -54,7 +54,7 @@ export class FavoritesService {
   async getUserFavorites(userId: number): Promise<Favorite[]> {
     return await this.favoritesRepository.find({
       where: { user: { id: userId } },
-      relations: ['biodata'],
+      relations: { biodata: true },
       order: { createdAt: 'DESC' }
     });
   }
