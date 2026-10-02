@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Check if the request is for admin routes
   if (pathname.startsWith('/admin')) {
-    // Skip middleware for login page and static assets
+    // Skip proxy for login page and static assets
     if (pathname === '/admin/login' || 
         pathname.startsWith('/auth/admin/login') ||
         pathname.includes('/_next/') ||
@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
 
     // If no token, redirect to login
     if (!adminToken) {
-      console.log(`[Middleware] No admin token found for ${pathname}, redirecting to login`)
+      console.log(`[Proxy] No admin token found for ${pathname}, redirecting to login`)
       const loginUrl = new URL('/auth/admin/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)

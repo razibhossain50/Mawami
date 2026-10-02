@@ -3,8 +3,7 @@ import Footer from "@/components/layout/Footer";
 import './globals.css';
 import { QueryProvider } from '@/components/common/QueryProvider';
 import { RegularAuthProvider } from '@/context/RegularAuthContext';
-import { HeroUIProvider } from '@heroui/react';
-import { ToastProvider } from "@heroui/toast";
+import { HeroProviders } from '@/components/common/HeroProviders';
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -44,8 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className='min-h-screen bg-gray-50'>
-        <HeroUIProvider>
-          <ToastProvider placement="top-right" />
+        <HeroProviders>
           <QueryProvider>
             <RegularAuthProvider>
               <Header />
@@ -53,7 +51,7 @@ export default function RootLayout({
               <Footer />
             </RegularAuthProvider>
           </QueryProvider>
-        </HeroUIProvider>
+        </HeroProviders>
       </body>
     </html>
   );
