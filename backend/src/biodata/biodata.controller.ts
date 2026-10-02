@@ -17,7 +17,7 @@ import { CreateBiodataDto } from './dto/create-biodata.dto';
 import { UpdateBiodataDto } from './dto/update-biodata.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { BiodataApprovalStatus } from './enums/admin-approval-status.enum';
 
 @Controller('biodatas')
