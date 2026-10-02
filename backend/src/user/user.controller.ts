@@ -13,8 +13,6 @@ export class UserController {
   // Add logging for all requests to this controller
   private logRequest(req: any, endpoint: string) {
     console.log(`\n=== ${endpoint} ===`);
-    console.log('Headers:', req.headers);
-    console.log('Authorization:', req.headers.authorization);
     console.log('Method:', req.method);
     console.log('URL:', req.url);
   }
@@ -32,7 +30,6 @@ export class UserController {
   @Post()
   createUser(@Body() createUserDto: CreateUserDto) {
     console.log('=== POST /api/users ===');
-    console.log('Create user data:', createUserDto);
     console.log('Role being set:', createUserDto.role || 'user (default)');
     return this.userService.create(createUserDto);
   }
@@ -41,8 +38,6 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'))
   testAuth(@Req() req: any) {
     console.log('=== Test Auth Endpoint ===');
-    console.log('Authorization header:', req.headers.authorization);
-    console.log('All headers:', req.headers);
     console.log('User from JWT:', req.user);
     return { message: 'Authentication successful', user: req.user };
   }

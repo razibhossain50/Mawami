@@ -38,8 +38,13 @@ services:
       DB_NAME: ${DB_NAME:-finder}
       PORT: 3001
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      JWT_SECRET: ${JWT_SECRET:-change-me}
+      # Required by the API; the default is for this local stack only
+      JWT_SECRET: ${JWT_SECRET:-local-docker-jwt-secret}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      # Optional: bootstrap a superadmin on first start (never resets an existing password)
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
+      SUPERADMIN_NAME: ${SUPERADMIN_NAME:-}
       # Google strategy and R2 upload service refuse to boot without these;
       # placeholders let the stack start, but OAuth / uploads need real values.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-placeholder}
