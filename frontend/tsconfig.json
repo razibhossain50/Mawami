@@ -26,7 +26,8 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "rootDir": "."
   },
   "include": [
     "next-env.d.ts",
