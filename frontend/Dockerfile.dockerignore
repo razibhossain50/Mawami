@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.next
+**/.env
+**/.env.*
+**/*.log
+**/tsconfig.tsbuildinfo
+.git
+backend/src
+backend/tests
+frontend/tests
+frontend/public/uploads

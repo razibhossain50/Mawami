@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/.next
+**/.env
+**/.env.*
+**/*.log
+.git
+frontend/src
+frontend/public
+frontend/tests
+backend/tests
