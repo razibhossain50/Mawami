@@ -306,13 +306,13 @@ export class BiodataService {
       
       // Provide more specific error messages
       if (error.code === '23505') {
-        throw new Error('Duplicate entry: A biodata with this information already exists');
+        throw new Error('Duplicate entry: A biodata with this information already exists', { cause: error });
       } else if (error.code === '23503') {
-        throw new Error('Foreign key constraint violation: Invalid user reference');
+        throw new Error('Foreign key constraint violation: Invalid user reference', { cause: error });
       } else if (error.code === '23502') {
-        throw new Error('Not null constraint violation: Required field is missing');
+        throw new Error('Not null constraint violation: Required field is missing', { cause: error });
       } else if (error.code === '23514') {
-        throw new Error('Check constraint violation: Invalid data format');
+        throw new Error('Check constraint violation: Invalid data format', { cause: error });
       }
       
       throw error;

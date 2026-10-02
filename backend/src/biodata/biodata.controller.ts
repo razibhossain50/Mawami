@@ -183,7 +183,7 @@ export class BiodataController {
 
       // Re-throw with more context
       const errorMessage = error.message || 'Unknown error occurred';
-      throw new Error(`Failed to update biodata: ${errorMessage}`);
+      throw new Error(`Failed to update biodata: ${errorMessage}`, { cause: error });
     }
   }
 
