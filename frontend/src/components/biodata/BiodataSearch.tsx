@@ -383,6 +383,7 @@ export const BiodataSearch = () => {
                             <div className="space-y-2">
                                 <FormSelect
                                   id="gender-select"
+                                  size="lg"
                                   label="I'm looking for"
                                   aria-label="Select gender preference"
                                   placeholder="Select gender"
@@ -399,6 +400,7 @@ export const BiodataSearch = () => {
                             <div className="space-y-2">
                                 <FormSelect
                                   id="marital-status-select"
+                                  size="lg"
                                   label="Marital status"
                                   aria-label="Select marital status preference"
                                   placeholder="Select marital status"
@@ -424,6 +426,7 @@ export const BiodataSearch = () => {
                             <div className="space-y-2">
                                 <FormInput
                                     id="biodata-number-input"
+                                    size="lg"
                                     label="Biodata Number"
                                     aria-label="Enter biodata number to search"
                                     placeholder="Enter biodata number"

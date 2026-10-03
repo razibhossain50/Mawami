@@ -92,7 +92,7 @@ export default function Settings() {
             <div className="grid gap-6">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium text-gray-700">Display Name</label>
-                <FormInput
+                <FormInput variant="bordered"
                   id="name"
                   value={name}
                   onValueChange={(value) => setName(value)}
@@ -105,7 +105,7 @@ export default function Settings() {
               
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</label>
-                <FormInput
+                <FormInput variant="bordered"
                   id="email"
                   type="email"
                   value={email}

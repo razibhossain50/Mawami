@@ -6,8 +6,8 @@
 
 @theme {
   --font-outfit: Outfit, sans-serif;
-  /* HeroUI styles apply font-sans */
-  --font-sans: Outfit, sans-serif;
+  /* HeroUI styles apply font-sans; client pages use the system UI font (Outfit isn't loaded here) */
+  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
   --breakpoint-*: initial;
   --breakpoint-sm: 375px;
@@ -62,3 +62,80 @@
 :root {}
 
 @layer base {}
+
+/* HeroUI v2 "flat" field look: filled gray boxes, no border/shadow, 12px radius */
+:root:not(.dark) {
+  --field-background: #f4f4f5;
+  --field-hover: #e4e4e7;
+  --field-focus: #f4f4f5;
+  --field-placeholder: #71717a;
+  --field-shadow: 0 0 0 0 transparent inset;
+  --field-radius: 0.75rem;
+}
+
+/* HeroUI v2 card model: padding lives on header/body/footer (12px), not on the card;
+   rounded corners clip gradient headers. Component classNames still override these. */
+@layer components {
+  .card {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 0 15px 0 rgb(0 0 0 / 0.03), 0 2px 30px 0 rgb(0 0 0 / 0.08), 0 0 1px 0 rgb(0 0 0 / 0.3);
+  }
+  .card__header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.75rem;
+  }
+  .card__content,
+  .card__footer {
+    padding: 0.75rem;
+  }
+}
+
+/* HeroUI v2 button sizes: sm 32px / md 40px / lg 48px with rounded (not pill) corners.
+   Buttons with their own height/rounded classes still override these. */
+@layer components {
+  .button {
+    height: 2.5rem;
+    border-radius: 12px;
+  }
+  .button--sm {
+    height: 2rem;
+    padding-inline: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+  }
+  .button--lg {
+    height: 3rem;
+    padding-inline: 1.5rem;
+    border-radius: 14px;
+    font-size: 1rem;
+  }
+  .button--icon-only {
+    width: 2.5rem;
+    padding-inline: 0;
+  }
+  .button--sm.button--icon-only {
+    width: 2rem;
+  }
+  .button--lg.button--icon-only {
+    width: 3rem;
+  }
+}
+
+/* HeroUI v2 chip heights (sm 24px / md 28px / lg 32px): padding classes don't grow them */
+@layer components {
+  .chip {
+    height: 1.75rem;
+    border-radius: 9999px;
+  }
+  .chip--sm {
+    height: 1.5rem;
+  }
+  .chip--lg {
+    height: 2rem;
+  }
+}

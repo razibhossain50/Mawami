@@ -182,7 +182,7 @@ export default function AdminSettingsPage() {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput
+                <FormInput variant="bordered"
                   label="Full Name"
                   value={formData.fullName}
                   onValueChange={handleInputChange('fullName')}
@@ -191,7 +191,7 @@ export default function AdminSettingsPage() {
                   isInvalid={!!errors.fullName}
                 />
 
-                <FormInput
+                <FormInput variant="bordered"
                   label="Email Address"
                   type="email"
                   value={formData.email}
@@ -212,7 +212,7 @@ export default function AdminSettingsPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormInput
+                <FormInput variant="bordered"
                   label="Current Password"
                   type="password"
                   placeholder="Enter your current password"
@@ -222,7 +222,7 @@ export default function AdminSettingsPage() {
                   isInvalid={!!errors.currentPassword}
                 />
 
-                <FormInput
+                <FormInput variant="bordered"
                   label="New Password"
                   type="password"
                   placeholder="Enter new password"
@@ -232,7 +232,7 @@ export default function AdminSettingsPage() {
                   isInvalid={!!errors.newPassword}
                 />
 
-                <FormInput
+                <FormInput variant="bordered"
                   label="Confirm New Password"
                   type="password"
                   placeholder="Confirm new password"

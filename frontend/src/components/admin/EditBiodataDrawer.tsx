@@ -530,7 +530,7 @@ export default function EditBiodataDrawer({
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* 1. Religion */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Religion"
                                   placeholder="Select Religion"
                                   value={editFormData.religion ? editFormData.religion as string : null}
@@ -547,7 +547,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* 2. Biodata Type */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Biodata Type"
                                   placeholder="Select Type"
                                   value={editFormData.biodataType ? editFormData.biodataType as string : null}
@@ -564,7 +564,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* 3. Marital Status */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Marital Status"
                                   placeholder="Select Status"
                                   value={editFormData.maritalStatus ? editFormData.maritalStatus as string : null}
@@ -603,7 +603,7 @@ export default function EditBiodataDrawer({
                                 </div>
 
                                 {/* 5. Height */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Height"
                                   placeholder="Select Height"
                                   value={editFormData.height ? editFormData.height as string : null}
@@ -660,7 +660,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* 6. Weight */}
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Weight"
                                     type="number"
                                     placeholder="Enter weight"
@@ -676,7 +676,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* 7. Complexion */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Complexion"
                                   placeholder="Select Complexion"
                                   value={editFormData.complexion ? editFormData.complexion as string : null}
@@ -693,7 +693,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* 8. Profession */}
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Profession"
                                     placeholder="Enter your profession"
                                     value={editFormData.profession || ''}
@@ -705,7 +705,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* 9. Blood Group */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Blood Group"
                                   placeholder="Select Blood Group"
                                   value={editFormData.bloodGroup ? editFormData.bloodGroup as string : null}
@@ -769,7 +769,7 @@ export default function EditBiodataDrawer({
                                             isRequired
                                         />
                                         <div className="mt-4">
-                                            <FormInput
+                                            <FormInput variant="bordered"
                                                 label="Area or Village Name"
                                                 placeholder="Enter area or village name"
                                                 value={editFormData.permanentArea || ''}
@@ -873,7 +873,7 @@ export default function EditBiodataDrawer({
                                             isRequired
                                         />
                                         <div className="mt-4">
-                                            <FormInput
+                                            <FormInput variant="bordered"
                                                 label="Area or Village Name"
                                                 placeholder="Enter area or village name"
                                                 value={editFormData.presentArea || ''}
@@ -891,7 +891,7 @@ export default function EditBiodataDrawer({
 
                         {/* Health Issues Section */}
                         <div className="space-y-4">
-                            <FormTextarea
+                            <FormTextarea variant="bordered"
                                 label="Do you have any physical or mental health issues?"
                                 placeholder="Please describe any health issues or write 'None' if you don't have any"
                                 value={editFormData.healthIssues || ''}
@@ -911,7 +911,7 @@ export default function EditBiodataDrawer({
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Education Medium */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Your Education Medium"
                                   placeholder="Select Medium"
                                   value={editFormData.educationMedium ? editFormData.educationMedium as string : null}
@@ -928,7 +928,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* Highest Education Level */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Highest Education Level"
                                   placeholder="Select Level"
                                   value={editFormData.highestEducation ? editFormData.highestEducation as string : null}
@@ -945,7 +945,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* Institute Name */}
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Institute or University Name"
                                     placeholder="Enter institute or university name"
                                     value={editFormData.instituteName || ''}
@@ -957,7 +957,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* Subject */}
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Which subject do you study"
                                     placeholder="Enter your subject/major"
                                     value={editFormData.subject || ''}
@@ -969,7 +969,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* Passing Year */}
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Passing Year"
                                     placeholder="Enter passing year"
                                     value={editFormData.passingYear || ''}
@@ -981,7 +981,7 @@ export default function EditBiodataDrawer({
                                 />
 
                                 {/* Result */}
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Result"
                                   placeholder="Select Result"
                                   value={editFormData.result ? editFormData.result as string : null}
@@ -1006,7 +1006,7 @@ export default function EditBiodataDrawer({
                             </h3>
 
                             {/* Economic Condition */}
-                            <FormSelect
+                            <FormSelect variant="bordered"
                               label="Family's Economic Condition"
                               placeholder="Select Economic Condition"
                               value={editFormData.economicCondition ? editFormData.economicCondition as string : null}
@@ -1028,7 +1028,7 @@ export default function EditBiodataDrawer({
                                     <h4 className="text-md font-semibold text-foreground">Father's Information</h4>
                                 </Card.Header>
                                 <Card.Content className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Father's Name"
                                         placeholder="Enter father's name"
                                         value={editFormData.fatherName || ''}
@@ -1038,7 +1038,7 @@ export default function EditBiodataDrawer({
                                         isInvalid={shouldShowValidationError('fatherName', !!editFormData.fatherName?.trim())}
                                         inputProps={{ onBlur: () => markFieldAsTouched('fatherName') }}
                                     />
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Father's Profession"
                                         placeholder="Enter father's profession"
                                         value={editFormData.fatherProfession || ''}
@@ -1048,7 +1048,7 @@ export default function EditBiodataDrawer({
                                         isInvalid={shouldShowValidationError('fatherProfession', !!editFormData.fatherProfession?.trim())}
                                         inputProps={{ onBlur: () => markFieldAsTouched('fatherProfession') }}
                                     />
-                                    <FormSelect
+                                    <FormSelect variant="bordered"
                                       label="Is your father alive?"
                                       placeholder="Select Status"
                                       value={editFormData.fatherAlive ? editFormData.fatherAlive as string : null}
@@ -1072,7 +1072,7 @@ export default function EditBiodataDrawer({
                                     <h4 className="text-md font-semibold text-foreground">Mother's Information</h4>
                                 </Card.Header>
                                 <Card.Content className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Mother's Name"
                                         placeholder="Enter mother's name"
                                         value={editFormData.motherName || ''}
@@ -1082,7 +1082,7 @@ export default function EditBiodataDrawer({
                                         isInvalid={shouldShowValidationError('motherName', !!editFormData.motherName?.trim())}
                                         inputProps={{ onBlur: () => markFieldAsTouched('motherName') }}
                                     />
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Mother's Profession"
                                         placeholder="Enter mother's profession"
                                         value={editFormData.motherProfession || ''}
@@ -1092,7 +1092,7 @@ export default function EditBiodataDrawer({
                                         isInvalid={shouldShowValidationError('motherProfession', !!editFormData.motherProfession?.trim())}
                                         inputProps={{ onBlur: () => markFieldAsTouched('motherProfession') }}
                                     />
-                                    <FormSelect
+                                    <FormSelect variant="bordered"
                                       label="Is your mother alive?"
                                       placeholder="Select Status"
                                       value={editFormData.motherAlive ? editFormData.motherAlive as string : null}
@@ -1112,7 +1112,7 @@ export default function EditBiodataDrawer({
 
                             {/* Siblings Information */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="How many brothers do you have?"
                                   placeholder="Select Number"
                                   value={editFormData.brothersCount !== undefined ? String(editFormData.brothersCount) : null}
@@ -1128,7 +1128,7 @@ export default function EditBiodataDrawer({
                                   options={Array.from({ length: 11 }, (_, i) => ({ value: String(i), label: String(i) }))}
                                 />
 
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="How many sisters do you have?"
                                   placeholder="Select Number"
                                   value={editFormData.sistersCount !== undefined ? String(editFormData.sistersCount) : null}
@@ -1146,7 +1146,7 @@ export default function EditBiodataDrawer({
                             </div>
 
                             {/* Family Details */}
-                            <FormTextarea
+                            <FormTextarea variant="bordered"
                                 label="Write details about yourself and your family"
                                 placeholder="Share any additional information about yourself and your family background"
                                 value={editFormData.familyDetails || ''}
@@ -1174,7 +1174,7 @@ export default function EditBiodataDrawer({
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Preferred Complexion"
                                         placeholder="Enter preferred complexion"
                                         value={editFormData.partnerComplexion || ''}
@@ -1185,7 +1185,7 @@ export default function EditBiodataDrawer({
                                         inputProps={{ onBlur: () => markFieldAsTouched('partnerComplexion') }}
                                     />
 
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Preferred Height"
                                         placeholder="Enter preferred height"
                                         value={editFormData.partnerHeight || ''}
@@ -1196,7 +1196,7 @@ export default function EditBiodataDrawer({
                                         inputProps={{ onBlur: () => markFieldAsTouched('partnerHeight') }}
                                     />
 
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Preferred Education"
                                         placeholder="Enter preferred education"
                                         value={editFormData.partnerEducation || ''}
@@ -1207,7 +1207,7 @@ export default function EditBiodataDrawer({
                                         inputProps={{ onBlur: () => markFieldAsTouched('partnerEducation') }}
                                     />
 
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Preferred Profession"
                                         placeholder="Enter preferred profession"
                                         value={editFormData.partnerProfession || ''}
@@ -1219,7 +1219,7 @@ export default function EditBiodataDrawer({
                                     />
                                 </div>
 
-                                <FormTextarea
+                                <FormTextarea variant="bordered"
                                     label="Preferred Place"
                                     placeholder="Enter preferred location"
                                     value={editFormData.partnerLocation || ''}
@@ -1231,7 +1231,7 @@ export default function EditBiodataDrawer({
                                     onBlur={() => markFieldAsTouched('partnerLocation')}
                                 />
 
-                                <FormTextarea
+                                <FormTextarea variant="bordered"
                                     label="Details about the prospective spouse"
                                     placeholder="Share your expectations and preferences for your life partner"
                                     value={editFormData.partnerDetails || ''}
@@ -1310,7 +1310,7 @@ export default function EditBiodataDrawer({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Your full name"
                                         placeholder="Enter full name"
                                         value={editFormData.fullName || ''}
@@ -1334,7 +1334,7 @@ export default function EditBiodataDrawer({
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Email"
                                         type="email"
                                         placeholder="Enter email address"
@@ -1347,7 +1347,7 @@ export default function EditBiodataDrawer({
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Guardian's Mobile Number"
                                         type="tel"
                                         placeholder="Enter guardian's mobile number"
@@ -1360,7 +1360,7 @@ export default function EditBiodataDrawer({
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <FormInput
+                                    <FormInput variant="bordered"
                                         label="Own Mobile Number"
                                         type="tel"
                                         placeholder="Enter your mobile number"

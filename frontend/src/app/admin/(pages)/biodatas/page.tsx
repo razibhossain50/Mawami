@@ -962,7 +962,7 @@ export default function Biodatas() {
                     <Modal.Footer className="flex justify-end items-end py-2 bg-surface/50">
                     <div>
                         <div className="text-sm font-semibold text-foreground whitespace-nowrap mb-1">Biodata Status:</div>
-                            <FormSelect
+                            <FormSelect variant="bordered"
                               placeholder="Select new status"
                               value={newStatus ? newStatus : null}
                               onValueChange={(selected) => {

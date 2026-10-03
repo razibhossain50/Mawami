@@ -80,7 +80,7 @@ export default function LoginFormRegular() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <FormInput
+              <FormInput variant="bordered"
                 inputProps={register("email")}
                 type="email"
                 label="Email"
@@ -92,7 +92,7 @@ export default function LoginFormRegular() {
                 groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
-              <FormInput
+              <FormInput variant="bordered"
                 inputProps={register("password")}
                 label="Password"
                 placeholder="Enter your password"

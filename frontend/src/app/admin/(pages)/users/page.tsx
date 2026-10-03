@@ -754,7 +754,7 @@ export default function Users() {
                     <Modal.Body>
                         <div className="space-y-4">
                             <div>
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Full Name"
                                     placeholder="Enter full name"
                                     value={newUserForm.fullName}
@@ -765,7 +765,7 @@ export default function Users() {
                             </div>
 
                             <div>
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Email"
                                     placeholder="Enter email address"
                                     type="email"
@@ -777,7 +777,7 @@ export default function Users() {
                             </div>
 
                             <div>
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Password"
                                     placeholder="Enter password"
                                     type="password"
@@ -789,7 +789,7 @@ export default function Users() {
                             </div>
 
                             <div>
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Confirm Password"
                                     placeholder="Confirm password"
                                     type="password"
@@ -855,7 +855,7 @@ export default function Users() {
                     <Modal.Body>
                         <div className="space-y-4">
                             <div>
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Full Name"
                                     placeholder="Enter full name"
                                     value={editUserForm.fullName}
@@ -866,7 +866,7 @@ export default function Users() {
                             </div>
 
                             <div>
-                                <FormInput
+                                <FormInput variant="bordered"
                                     label="Email"
                                     placeholder="Enter email address"
                                     type="email"
@@ -878,7 +878,7 @@ export default function Users() {
                             </div>
 
                             <div>
-                                <FormSelect
+                                <FormSelect variant="bordered"
                                   label="Role"
                                   placeholder="Select user role"
                                   value={editUserForm.role ? editUserForm.role as string : null}

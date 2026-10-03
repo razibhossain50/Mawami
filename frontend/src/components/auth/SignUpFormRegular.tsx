@@ -122,7 +122,7 @@ export default function SignupFormRegular() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              <FormInput
+              <FormInput variant="bordered"
                 inputProps={register("fullName")}
                 label="Full Name"
                 placeholder="Enter your full name"
@@ -138,7 +138,7 @@ export default function SignupFormRegular() {
                 groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
-              <FormInput
+              <FormInput variant="bordered"
                 inputProps={register("email")}
                 type="email"
                 label="Email"
@@ -156,7 +156,7 @@ export default function SignupFormRegular() {
               />
 
               <div className="space-y-2">
-                <FormInput
+                <FormInput variant="bordered"
                   inputProps={register("password")}
                   label="Password"
                   placeholder="Create a strong password"
@@ -209,7 +209,7 @@ export default function SignupFormRegular() {
                 )}
               </div>
 
-              <FormInput
+              <FormInput variant="bordered"
                 inputProps={register("confirmPassword")}
                 label="Confirm Password"
                 placeholder="Confirm your password"
