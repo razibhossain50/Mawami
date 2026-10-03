@@ -1,5 +1,4 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { extname } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
@@ -31,9 +30,10 @@ export class UploadService {
         });
     }
 
-    private buildKey(originalname: string): string {
+    private buildKey(mimetype: string): string {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(originalname) || '';
+        // Derive the extension from the validated MIME type, never the client filename
+        const ext = mimetype === 'image/png' ? '.png' : '.jpg';
         return `${this.folder}/profile-${uniqueSuffix}${ext}`;
     }
 
@@ -67,7 +67,7 @@ export class UploadService {
             throw new BadRequestException('Only JPEG and PNG images are allowed');
         }
 
-        const key = this.buildKey(file.originalname);
+        const key = this.buildKey(file.mimetype);
     await this.s3.send(new PutObjectCommand({
             Bucket: this.bucket,
             Key: key,

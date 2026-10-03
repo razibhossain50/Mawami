@@ -103,7 +103,7 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
-  logout(@Req() req: Request) {
+  logout() {
     // In a real app, you might want to blacklist the token
     return { message: 'Logout successful' };
   }
@@ -111,8 +111,8 @@ export class AuthController {
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiExcludeEndpoint()
-  async googleAuth(@Req() req) {
-    // This route initiates the Google OAuth flow
+  googleAuth() {
+    // AuthGuard('google') redirects to Google; this handler never runs
   }
 
   @Get('google/callback')

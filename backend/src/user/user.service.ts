@@ -14,13 +14,9 @@ export class UserService {
     private userRepository: Repository<User>
   ) {}
 
-  async findAll() {
-    const users = await this.userRepository.find();
-    // Return users without passwords
-    return users.map((user) => {
-      const { password: _, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    });
+  // password is select: false on the entity, so it is never part of these results
+  findAll() {
+    return this.userRepository.find();
   }
 
   async create(createUserDto: CreateUserDto) {
@@ -49,8 +45,8 @@ export class UserService {
 
       const savedUser = await this.userRepository.save(user);
 
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = savedUser;
+      // The saved entity still holds the hash we just set; strip it from the response
+      const { password: _password, ...userWithoutPassword } = savedUser;
       return userWithoutPassword;
     } catch (error) {
       // Handle database-level unique constraint violations
@@ -68,8 +64,7 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const { password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return user;
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
@@ -100,11 +95,7 @@ export class UserService {
     Object.assign(user, updateUserDto);
     
     try {
-      const updatedUser = await this.userRepository.save(user);
-      
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = updatedUser;
-      return userWithoutPassword;
+      return await this.userRepository.save(user);
     } catch (error) {
       // Handle database-level unique constraint violations
       if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
@@ -124,10 +115,17 @@ export class UserService {
       throw new BadRequestException('New password and confirm password do not match');
     }
 
-    // Find the user with password
-    const user = await this.userRepository.findOne({ where: { id } });
+    // Find the user with password (excluded from default selects)
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id })
+      .getOne();
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+    if (!user.password) {
+      throw new BadRequestException('This account uses Google Sign-In and has no password to change');
     }
 
     // Verify current password

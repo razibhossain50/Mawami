@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 
@@ -21,8 +22,8 @@ const AppDataSource = new DataSource({
   username: dbUser,
   password: dbPass,
   database: dbName,
-  entities: ['src/**/*.entity.ts'],
-  migrations: ['src/migrations/*.ts'],
+  entities: [join(__dirname, '**/*.entity.{ts,js}')],
+  migrations: [join(__dirname, 'migrations/*.{ts,js}')],
   synchronize: false,
   logging: true,
 });

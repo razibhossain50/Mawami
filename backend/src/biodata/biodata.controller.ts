@@ -10,15 +10,38 @@ import {
   UseGuards,
   Query,
   Req,
-  Optional
+  ForbiddenException,
+  NotFoundException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { BiodataService } from './biodata.service';
 import { CreateBiodataDto } from './dto/create-biodata.dto';
 import { UpdateBiodataDto } from './dto/update-biodata.dto';
+import { UpdateApprovalStatusDto } from './dto/update-approval-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthPayload } from '../auth/interfaces/auth-payload.interface';
 import type { Request } from 'express';
 import { BiodataApprovalStatus } from './enums/admin-approval-status.enum';
+
+const isAdmin = (user: AuthPayload) => user.role === 'admin' || user.role === 'superadmin';
+
+// Owners may save a draft or submit for review; every other approval state is set by admins
+const OWNER_APPROVAL_STATUSES: ReadonlyArray<BiodataApprovalStatus> = [
+  BiodataApprovalStatus.IN_PROGRESS,
+  BiodataApprovalStatus.PENDING,
+];
+
+function assertOwnerSettableStatus(dto: UpdateBiodataDto) {
+  if (dto.biodataApprovalStatus !== undefined && !OWNER_APPROVAL_STATUSES.includes(dto.biodataApprovalStatus)) {
+    throw new ForbiddenException('Only an admin can set the approval status to ' + dto.biodataApprovalStatus);
+  }
+}
+
+const toInt = (value: string | undefined) => {
+  const n = value === undefined ? NaN : parseInt(value, 10);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 @Controller('biodatas')
 export class BiodataController {
@@ -26,21 +49,9 @@ export class BiodataController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() createBiodataDto: CreateBiodataDto, @CurrentUser() user: any) {
-    console.log('=== POST /api/biodatas ===');
-    console.log('User from JWT:', user);
-    console.log('User ID:', user?.id);
-    console.log('Create DTO:', createBiodataDto);
-
-    if (!user?.id) {
-      console.error('No user ID found in JWT payload');
-      throw new Error('User authentication required');
-    }
-
-    const dataWithUserId = { ...createBiodataDto, userId: user.id };
-    console.log('Data being sent to service:', dataWithUserId);
-
-    return this.biodataService.create(dataWithUserId);
+  create(@Body() createBiodataDto: CreateBiodataDto, @CurrentUser() user: AuthPayload) {
+    assertOwnerSettableStatus(createBiodataDto);
+    return this.biodataService.create({ ...createBiodataDto, userId: user.id });
   }
 
   @Get()
@@ -59,237 +70,143 @@ export class BiodataController {
     @Query('page') page?: string,
     @Query('limit') limit?: string
   ) {
-    const filters = {
+    return this.biodataService.searchBiodatas({
       gender,
       maritalStatus,
       location,
-      biodataNumber,
-      ageMin: ageMin ? parseInt(ageMin) : undefined,
-      ageMax: ageMax ? parseInt(ageMax) : undefined,
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 6
-    };
-
-    return this.biodataService.searchBiodatas(filters);
+      biodataNumber: toInt(biodataNumber),
+      ageMin: toInt(ageMin),
+      ageMax: toInt(ageMax),
+      page: Math.max(1, toInt(page) ?? 1),
+      limit: Math.min(50, Math.max(1, toInt(limit) ?? 6)),
+    });
   }
 
   @Get('current')
   @UseGuards(JwtAuthGuard)
-  async findCurrent(@CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
-    }
-
-    const biodata = await this.biodataService.findByUserId(user.id);
-
-    // Return null if no biodata exists, but as proper JSON
-    if (!biodata) {
-      return null;
-    }
-
-    return biodata;
+  findCurrent(@CurrentUser() user: AuthPayload) {
+    // null (as JSON) when the user has no biodata yet
+    return this.biodataService.findByUserId(user.id);
   }
 
   @Get('admin/all')
   @UseGuards(JwtAuthGuard)
-  findAllForAdmin(@CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
+  findAllForAdmin(@CurrentUser() user: AuthPayload) {
+    if (!isAdmin(user)) {
+      throw new ForbiddenException('Access denied: Only admin and superadmin can view all biodatas');
     }
-
-    // Allow both admin and superadmin to access all biodatas
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
-      throw new Error('Access denied: Only admin and superadmin can view all biodatas');
-    }
-
     return this.biodataService.findAllForAdmin();
   }
 
   @Get('owner/:id')
   @UseGuards(JwtAuthGuard)
-  async findOneForOwner(@Param('id') id: string, @CurrentUser() user: any) {
-    const biodataId = +id;
-    const isOwner = await this.biodataService.validateOwnership(biodataId, user.id);
-    if (!isOwner) {
-      throw new Error('Access denied: You can only access your own biodata');
+  async findOneForOwner(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthPayload) {
+    if (!(await this.biodataService.validateOwnership(id, user.id))) {
+      throw new ForbiddenException('Access denied: You can only access your own biodata');
     }
-    return this.biodataService.findOneForOwner(biodataId);
+    return this.biodataService.findOneForOwner(id);
   }
 
   @Put(':id/approval-status')
   @UseGuards(JwtAuthGuard)
-  async updateApprovalStatus(@Param('id') id: string, @Body() statusData: { status: BiodataApprovalStatus }, @CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
+  updateApprovalStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() { status }: UpdateApprovalStatusDto,
+    @CurrentUser() user: AuthPayload,
+  ) {
+    if (!isAdmin(user)) {
+      throw new ForbiddenException('Access denied: Only admin and superadmin can update biodata approval status');
     }
-
-    // Allow both admin and superadmin to update biodata approval status
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
-      throw new Error('Access denied: Only admin and superadmin can update biodata approval status');
-    }
-
-    const biodataId = +id;
-    return this.biodataService.updateApprovalStatus(biodataId, statusData.status);
+    return this.biodataService.updateApprovalStatus(id, status);
   }
-
-
 
   @Put('current/toggle-visibility')
   @UseGuards(JwtAuthGuard)
-  async toggleUserVisibility(@CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
-    }
-
+  toggleUserVisibility(@CurrentUser() user: AuthPayload) {
     return this.biodataService.toggleUserVisibility(user.id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.biodataService.findOne(+id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const biodata = await this.biodataService.findOne(id);
+    if (!biodata) {
+      throw new NotFoundException('Biodata not found');
+    }
+    return biodata;
   }
 
   @Put('current')
   @UseGuards(JwtAuthGuard)
-  async updateCurrent(@Body() updateBiodataDto: UpdateBiodataDto, @CurrentUser() user: any) {
-    console.log('=== PUT /api/biodatas/current ===');
-    console.log('Update current user:', user);
-    console.log('Update data type:', typeof updateBiodataDto);
-    console.log('Update data:', JSON.stringify(updateBiodataDto, null, 2));
-    console.log('Update data keys:', Object.keys(updateBiodataDto || {}));
-
-    if (!user?.id) {
-      console.error('Controller: No user ID found in JWT payload');
-      throw new Error('User authentication required');
-    }
-
-    // Validate user ID type
-    if (typeof user.id !== 'number') {
-      console.error('Controller: Invalid user ID type:', typeof user.id, user.id);
-      throw new Error('Invalid user ID format');
-    }
-
-    try {
-      console.log('Controller: Calling service with userId:', user.id);
-      const result = await this.biodataService.updateByUserId(user.id, updateBiodataDto);
-      console.log('Controller: Update successful, result:', result);
-      return result;
-    } catch (error) {
-      console.error('Controller: Error updating biodata:', error);
-      console.error('Controller: Error name:', error.name);
-      console.error('Controller: Error message:', error.message);
-      console.error('Controller: Error code:', error.code);
-      console.error('Controller: Error stack:', error.stack);
-
-      // Re-throw with more context
-      const errorMessage = error.message || 'Unknown error occurred';
-      throw new Error(`Failed to update biodata: ${errorMessage}`, { cause: error });
-    }
+  updateCurrent(@Body() updateBiodataDto: UpdateBiodataDto, @CurrentUser() user: AuthPayload) {
+    assertOwnerSettableStatus(updateBiodataDto);
+    return this.biodataService.updateByUserId(user.id, updateBiodataDto);
   }
 
   @Put(':id')
   @UseGuards(JwtAuthGuard)
-  async update(@Param('id') id: string, @Body() updateBiodataDto: UpdateBiodataDto, @CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
-    }
-
-    // Allow admin and superadmin to edit any biodata, otherwise validate ownership
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
-      const isOwner = await this.biodataService.validateOwnership(+id, user.id);
-      if (!isOwner) {
-        throw new Error('You can only update your own biodata');
-      }
-    }
-
-    console.log('=== PUT /api/biodatas/:id ===');
-    console.log('User:', user);
-    console.log('Biodata ID:', id);
-    console.log('Update data:', updateBiodataDto);
-
-    return this.biodataService.update(+id, updateBiodataDto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateBiodataDto: UpdateBiodataDto, @CurrentUser() user: AuthPayload) {
+    return this.updateAsOwnerOrAdmin(id, updateBiodataDto, user);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  async patch(@Param('id') id: string, @Body() updateBiodataDto: UpdateBiodataDto, @CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
-    }
-
-    // Allow admin and superadmin to edit any biodata, otherwise validate ownership
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
-      const isOwner = await this.biodataService.validateOwnership(+id, user.id);
-      if (!isOwner) {
-        throw new Error('You can only update your own biodata');
-      }
-    }
-
-    return this.biodataService.update(+id, updateBiodataDto);
+  patch(@Param('id', ParseIntPipe) id: number, @Body() updateBiodataDto: UpdateBiodataDto, @CurrentUser() user: AuthPayload) {
+    return this.updateAsOwnerOrAdmin(id, updateBiodataDto, user);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  async remove(@Param('id') id: string, @CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthPayload) {
+    // Superadmin can delete any biodata; everyone else only their own
+    if (user.role !== 'superadmin' && !(await this.biodataService.validateOwnership(id, user.id))) {
+      throw new ForbiddenException('You can only delete your own biodata');
     }
-
-    // Allow superadmin to delete any biodata, otherwise validate ownership
-    if (user.role !== 'superadmin') {
-      const isOwner = await this.biodataService.validateOwnership(+id, user.id);
-      if (!isOwner) {
-        throw new Error('You can only delete your own biodata');
-      }
-    }
-
-    return this.biodataService.remove(+id);
+    return this.biodataService.remove(id);
   }
 
   // For multi-step form: update step and partial data
   @Put(':id/step/:step')
   @UseGuards(JwtAuthGuard)
   async updateStep(
-    @Param('id') id: string,
-    @Param('step') step: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('step', ParseIntPipe) step: number,
     @Body() partialData: UpdateBiodataDto,
-    @CurrentUser() user: any
+    @CurrentUser() user: AuthPayload
   ) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
+    if (!(await this.biodataService.validateOwnership(id, user.id))) {
+      throw new ForbiddenException('You can only update your own biodata');
     }
-
-    // Validate ownership
-    const isOwner = await this.biodataService.validateOwnership(+id, user.id);
-    if (!isOwner) {
-      throw new Error('You can only update your own biodata');
-    }
-
-    return this.biodataService.updateStep(+id, +step, partialData);
+    assertOwnerSettableStatus(partialData);
+    return this.biodataService.updateStep(id, step, partialData);
   }
 
   // Profile view tracking endpoints
   @Post(':id/view')
-  async trackProfileView(@Param('id') id: string, @Req() req: Request) {
-    const biodataId = +id;
-    const viewerId: number | undefined = undefined; // For now, we'll handle anonymous tracking
-    const ipAddress = req.ip || req.connection.remoteAddress || undefined;
+  trackProfileView(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    const ipAddress = req.ip || req.socket?.remoteAddress || undefined;
     const userAgent = req.get('User-Agent') || undefined;
-
-    return this.biodataService.trackProfileView(biodataId, viewerId, ipAddress, userAgent);
+    // Anonymous tracking (deduplicated per IP for 24h)
+    return this.biodataService.trackProfileView(id, undefined, ipAddress, userAgent);
   }
 
   @Get(':id/view-count')
-  async getProfileViewCount(@Param('id') id: string) {
-    return { viewCount: await this.biodataService.getProfileViewCount(+id) };
+  async getProfileViewCount(@Param('id', ParseIntPipe) id: number) {
+    return { viewCount: await this.biodataService.getProfileViewCount(id) };
   }
 
   @Get('current/view-stats')
   @UseGuards(JwtAuthGuard)
-  async getUserProfileViewStats(@CurrentUser() user: any) {
-    if (!user?.id) {
-      throw new Error('User authentication required');
-    }
+  getUserProfileViewStats(@CurrentUser() user: AuthPayload) {
     return this.biodataService.getUserProfileViewStats(user.id);
+  }
+
+  private async updateAsOwnerOrAdmin(id: number, dto: UpdateBiodataDto, user: AuthPayload) {
+    if (!isAdmin(user)) {
+      if (!(await this.biodataService.validateOwnership(id, user.id))) {
+        throw new ForbiddenException('You can only update your own biodata');
+      }
+      assertOwnerSettableStatus(dto);
+    }
+    return this.biodataService.update(id, dto);
   }
 }

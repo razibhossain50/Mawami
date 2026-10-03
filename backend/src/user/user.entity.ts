@@ -11,7 +11,9 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ nullable: true })
+  // Never loaded by default (keeps hashes out of relations and API responses);
+  // use findWithPassword-style queries with addSelect('user.password') when needed
+  @Column({ nullable: true, select: false })
   password: string;
 
   @Column({ nullable: true })

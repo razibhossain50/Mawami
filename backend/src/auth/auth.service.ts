@@ -8,7 +8,7 @@ import { User } from '../user/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateUserDto } from '../user/create-user.dto';
-import { AuthPayload } from './interfaces/auth-payload.interface';
+import type { AuthPayload } from './interfaces/auth-payload.interface';
 
 interface GoogleUser {
   googleId: string;
@@ -78,9 +78,17 @@ export class AuthService {
     }
   }
 
+  private findByEmailWithPassword(email: string) {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.email = :email', { email })
+      .getOne();
+  }
+
   async validateUser(loginDto: LoginDto): Promise<AuthPayload> {
     const normalizedEmail = loginDto.email.toLowerCase().trim();
-    const user = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    const user = await this.findByEmailWithPassword(normalizedEmail);
 
     if (!user) {
       throw new UnauthorizedException('No account found with this email. Please sign up first.');
@@ -125,7 +133,7 @@ export class AuthService {
   // Admin authentication methods (email-based)
   async validateAdminUser(adminLoginDto: AdminLoginDto): Promise<AuthPayload> {
     const normalizedEmail = adminLoginDto.email.toLowerCase().trim();
-    const user = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    const user = await this.findByEmailWithPassword(normalizedEmail);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -134,6 +142,10 @@ export class AuthService {
     // Check if user has admin or superadmin role
     if (user.role !== 'admin' && user.role !== 'superadmin') {
       throw new UnauthorizedException('Access denied. Admin privileges required.');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(adminLoginDto.password, user.password);

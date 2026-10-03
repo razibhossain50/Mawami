@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 
@@ -15,7 +16,7 @@ const AppDataSource = new DataSource({
   username: configService.get<string>('DB_USER') || 'postgres',
   password: configService.get<string>('DB_PASS') || '12345',
   database: configService.get<string>('DB_NAME') || 'finder',
-  entities: ['src/**/*.entity.ts'],
+  entities: [join(__dirname, '**/*.entity.{ts,js}')],
   synchronize: false,
   logging: true,
 });
@@ -75,5 +76,5 @@ export { AppDataSource, runDatabaseSeed, seedDatabase };
 
 // Run if this file is executed directly
 if (require.main === module) {
-  runDatabaseSeed();
+  void runDatabaseSeed();
 }

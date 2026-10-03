@@ -1,366 +1,172 @@
 import { jest } from '@jest/globals';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BiodataService } from '../../backend/src/biodata/biodata.service';
-import { Biodata } from '../../backend/src/biodata/biodata.entity';
-import { ProfileView } from '../../backend/src/biodata/entities/profile-view.entity';
-import { CreateBiodataDto } from '../../backend/src/biodata/dto/create-biodata.dto';
-import { UpdateBiodataDto } from '../../backend/src/biodata/dto/update-biodata.dto';
-import { BiodataApprovalStatus } from '../../backend/src/biodata/enums/admin-approval-status.enum';
+import { BiodataService } from '../src/biodata/biodata.service';
+import { Biodata } from '../src/biodata/biodata.entity';
+import { ProfileView } from '../src/biodata/entities/profile-view.entity';
+import { BiodataApprovalStatus } from '../src/biodata/enums/admin-approval-status.enum';
+import { BiodataVisibilityStatus } from '../src/biodata/enums/user-visibility-status.enum';
+
+const makeBiodata = (overrides: Partial<Biodata> = {}) =>
+  Object.assign(new Biodata(), {
+    id: 1,
+    userId: 1,
+    fullName: 'Test User',
+    biodataApprovalStatus: BiodataApprovalStatus.APPROVED,
+    biodataVisibilityStatus: BiodataVisibilityStatus.ACTIVE,
+    viewCount: 0,
+    ...overrides,
+  });
+
+const makeQueryBuilder = (result: [Biodata[], number] = [[], 0]) => {
+  const qb: any = {};
+  for (const method of ['where', 'andWhere', 'orderBy', 'skip', 'take', 'leftJoinAndSelect']) {
+    qb[method] = jest.fn(() => qb);
+  }
+  qb.getManyAndCount = jest.fn(async () => result);
+  qb.getOne = jest.fn(async () => null);
+  qb.getCount = jest.fn(async () => 0);
+  return qb;
+};
 
 describe('BiodataService', () => {
   let service: BiodataService;
-  let repository: Repository<Biodata>;
-  let profileViewRepository: Repository<ProfileView>;
-
-  const mockRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
+  const repo = {
+    create: jest.fn((data: any) => data),
+    save: jest.fn(async (data: any) => ({ id: 1, ...data })),
     find: jest.fn(),
     findOne: jest.fn(),
-    findOneBy: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      take: jest.fn().mockReturnThis(),
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      getMany: jest.fn(),
-      getCount: jest.fn(),
-    })),
+    update: jest.fn(async () => ({ affected: 1 })),
+    delete: jest.fn(async () => ({ affected: 1 })),
+    increment: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
-
-  const mockProfileViewRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    findOneBy: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      take: jest.fn().mockReturnThis(),
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      getMany: jest.fn(),
-      getCount: jest.fn(),
-    })),
+  const viewRepo = {
+    create: jest.fn((data: any) => data),
+    save: jest.fn(async (data: any) => data),
+    createQueryBuilder: jest.fn(() => makeQueryBuilder()),
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BiodataService,
-        {
-          provide: getRepositoryToken(Biodata),
-          useValue: mockRepository,
-        },
-        {
-          provide: getRepositoryToken(ProfileView),
-          useValue: mockProfileViewRepository,
-        },
+        { provide: getRepositoryToken(Biodata), useValue: repo },
+        { provide: getRepositoryToken(ProfileView), useValue: viewRepo },
       ],
     }).compile();
-
-    service = module.get<BiodataService>(BiodataService);
-    repository = module.get<Repository<Biodata>>(getRepositoryToken(Biodata));
-    profileViewRepository = module.get<Repository<ProfileView>>(getRepositoryToken(ProfileView));
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    service = module.get(BiodataService);
   });
 
   describe('create', () => {
-    it('should create a new biodata', async () => {
-      const createBiodataDto: CreateBiodataDto = {
-        religion: 'Islam',
-        biodataType: 'Male',
-        maritalStatus: 'Single',
-        dateOfBirth: '1995-01-01',
-        age: 29,
-        height: '5.6',
-        weight: 70,
-        complexion: 'Wheatish',
-        profession: 'Engineer',
-        bloodGroup: 'A+',
-        permanentCountry: 'Bangladesh',
-        permanentDivision: 'Dhaka',
-        permanentZilla: 'Dhaka',
-        permanentUpazilla: 'Dhanmondi',
-        permanentArea: 'Test Area',
-        presentCountry: 'Bangladesh',
-        presentDivision: 'Dhaka',
-        presentZilla: 'Dhaka',
-        presentUpazilla: 'Dhanmondi',
-        presentArea: 'Test Area',
-        healthIssues: 'None',
-        educationMedium: 'English',
-        highestEducation: 'Bachelor',
-        instituteName: 'Test University',
-        passingYear: 2020,
-        result: '3.5',
-        economicCondition: 'Good',
-        fatherName: 'Test Father',
-        fatherProfession: 'Business',
-        fatherAlive: 'Yes',
-        motherName: 'Test Mother',
-        motherProfession: 'Housewife',
-        motherAlive: 'Yes',
-        brothersCount: 1,
-        sistersCount: 1,
-        partnerAgeMin: 25,
-        partnerAgeMax: 35,
-        fullName: 'Test User',
-        email: 'test@example.com',
-        guardianMobile: '01234567890',
-        ownMobile: '01234567891',
-      };
+    it('creates a biodata for a user without one', async () => {
+      repo.findOne.mockResolvedValueOnce(null as never);
+      const result = await service.create({ fullName: 'A', userId: 7 });
+      expect(repo.create).toHaveBeenCalledWith({ fullName: 'A', userId: 7 });
+      expect(result).toMatchObject({ fullName: 'A', userId: 7 });
+    });
 
-      const expectedBiodata = {
-        id: 1,
-        ...createBiodataDto,
-        userId: 1,
-        biodataApprovalStatus: BiodataApprovalStatus.IN_PROGRESS,
-        biodataVisibilityStatus: 'active',
-        viewCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockRepository.create.mockReturnValue(expectedBiodata);
-      mockRepository.save.mockResolvedValue(expectedBiodata);
-
-      const result = await service.create({ ...createBiodataDto, userId: 1 });
-
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        ...createBiodataDto,
-        userId: 1,
-      });
-      expect(mockRepository.save).toHaveBeenCalledWith(expectedBiodata);
-      expect(result).toEqual(expectedBiodata);
+    it('rejects a second biodata for the same user', async () => {
+      repo.findOne.mockResolvedValueOnce(makeBiodata() as never);
+      await expect(service.create({ userId: 1 } as any)).rejects.toBeInstanceOf(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 
-  describe('findByUserId', () => {
-    it('should find biodata by user ID', async () => {
-      const userId = 1;
-      const expectedBiodata = {
-        id: 1,
-        userId,
-        religion: 'Islam',
-        biodataType: 'Male',
-        biodataApprovalStatus: BiodataApprovalStatus.IN_PROGRESS,
-      };
-
-      mockRepository.findOne.mockResolvedValue(expectedBiodata);
-
-      const result = await service.findByUserId(userId);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { userId },
-        relations: { user: true }
+  describe('public reads', () => {
+    it('findAll only queries approved + active biodatas, without the user relation', async () => {
+      repo.find.mockResolvedValueOnce([] as never);
+      await service.findAll();
+      const options = repo.find.mock.calls[0][0] as any;
+      expect(options.where).toEqual({
+        biodataApprovalStatus: BiodataApprovalStatus.APPROVED,
+        biodataVisibilityStatus: BiodataVisibilityStatus.ACTIVE,
       });
-      expect(result).toEqual(expectedBiodata);
+      expect(options.relations).toBeUndefined();
     });
 
-    it('should return null if no biodata found', async () => {
-      const userId = 999;
-      mockRepository.findOne.mockResolvedValue(null);
+    it.each([
+      [BiodataApprovalStatus.PENDING, BiodataVisibilityStatus.ACTIVE],
+      [BiodataApprovalStatus.APPROVED, BiodataVisibilityStatus.INACTIVE],
+    ])('findOne hides a biodata that is %s / %s', async (approval, visibility) => {
+      repo.findOne.mockResolvedValueOnce(
+        makeBiodata({ biodataApprovalStatus: approval, biodataVisibilityStatus: visibility }) as never,
+      );
+      expect(await service.findOne(1)).toBeNull();
+    });
 
-      const result = await service.findByUserId(userId);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { userId },
-        relations: { user: true }
-      });
-      expect(result).toBeNull();
+    it('findOne returns an approved + active biodata', async () => {
+      const biodata = makeBiodata();
+      repo.findOne.mockResolvedValueOnce(biodata as never);
+      expect(await service.findOne(1)).toBe(biodata);
     });
   });
 
   describe('updateByUserId', () => {
-    it('should update existing biodata', async () => {
-      const userId = 1;
-      const updateDto: UpdateBiodataDto = {
-        religion: 'Islam',
-        biodataType: 'Male',
-        completedSteps: [1, 2],
-        biodataApprovalStatus: BiodataApprovalStatus.IN_PROGRESS,
-      };
-
-      const existingBiodata = {
-        id: 1,
-        userId,
-        religion: 'Hindu',
-        biodataType: 'Female',
-        biodataApprovalStatus: 'pending',
-      };
-
-      const updatedBiodata = {
-        ...existingBiodata,
-        ...updateDto,
-      };
-
-      mockRepository.findOne.mockResolvedValue(existingBiodata);
-      mockRepository.update.mockResolvedValue({ affected: 1 });
-      mockRepository.findOne.mockResolvedValueOnce(existingBiodata).mockResolvedValueOnce(updatedBiodata);
-
-      const result = await service.updateByUserId(userId, updateDto);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { userId },
-        relations: { user: true }
-      });
-      expect(mockRepository.update).toHaveBeenCalledWith(existingBiodata.id, updateDto);
-      expect(result).toEqual(updatedBiodata);
+    it('updates the existing biodata, keeping clearable nulls and dropping others', async () => {
+      const existing = makeBiodata({ id: 5 });
+      repo.findOne.mockResolvedValueOnce(existing as never).mockResolvedValueOnce(existing as never);
+      await service.updateByUserId(1, { fullName: 'New', profilePicture: null, religion: null, age: undefined } as any);
+      expect(repo.update).toHaveBeenCalledWith(5, { fullName: 'New', profilePicture: null });
     });
 
-    it('should create new biodata if none exists', async () => {
-      const userId = 1;
-      const updateDto: UpdateBiodataDto = {
-        religion: 'Islam',
-        biodataType: 'Male',
-        completedSteps: [1],
-        biodataApprovalStatus: BiodataApprovalStatus.IN_PROGRESS,
-      };
-
-      const newBiodata = {
-        id: 1,
-        userId,
-        ...updateDto,
-        biodataApprovalStatus: BiodataApprovalStatus.IN_PROGRESS,
-        biodataVisibilityStatus: 'active',
-        viewCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockRepository.findOne.mockResolvedValue(null);
-      mockRepository.create.mockReturnValue(newBiodata);
-      mockRepository.save.mockResolvedValue(newBiodata);
-
-      const result = await service.updateByUserId(userId, updateDto);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { userId },
-        relations: { user: true }
-      });
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        ...updateDto,
-        userId,
-      });
-      expect(mockRepository.save).toHaveBeenCalledWith(newBiodata);
-      expect(result).toEqual(newBiodata);
+    it('creates the biodata when the user has none', async () => {
+      repo.findOne.mockResolvedValueOnce(null as never);
+      await service.updateByUserId(3, { fullName: 'Fresh' });
+      expect(repo.create).toHaveBeenCalledWith({ fullName: 'Fresh', userId: 3 });
+      expect(repo.save).toHaveBeenCalled();
     });
   });
 
   describe('searchBiodatas', () => {
-    it('should search biodatas with filters', async () => {
-      const filters = {
-        gender: 'Male',
-        maritalStatus: 'Single',
-        ageMin: 25,
-        ageMax: 35,
-        page: 1,
-        limit: 10,
-      };
+    it('filters by status in SQL and paginates in the database', async () => {
+      const qb = makeQueryBuilder([[makeBiodata()], 11]);
+      repo.createQueryBuilder.mockReturnValueOnce(qb as never);
 
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([]),
-        getCount: jest.fn().mockResolvedValue(0),
-      };
+      const result = await service.searchBiodatas({ gender: 'Male', biodataNumber: 1, page: 2, limit: 5 });
 
-      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-
-      const result = await service.searchBiodatas(filters);
-
-      expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith('biodata');
-      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('biodata.user', 'user');
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
-      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('biodata.id', 'DESC');
-      expect(result).toEqual({
-        data: [],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0,
-        },
-      });
+      expect(qb.where).toHaveBeenCalledWith('biodata.biodataApprovalStatus = :approved', { approved: BiodataApprovalStatus.APPROVED });
+      expect(qb.andWhere).toHaveBeenCalledWith('biodata.biodataVisibilityStatus = :active', { active: BiodataVisibilityStatus.ACTIVE });
+      expect(qb.andWhere).toHaveBeenCalledWith('biodata.biodataType = :gender', { gender: 'Male' });
+      expect(qb.andWhere).toHaveBeenCalledWith('biodata.id = :id', { id: 1 });
+      expect(qb.leftJoinAndSelect).not.toHaveBeenCalled();
+      expect(qb.skip).toHaveBeenCalledWith(5);
+      expect(qb.take).toHaveBeenCalledWith(5);
+      expect(result.pagination).toEqual({ page: 2, limit: 5, total: 11, totalPages: 3 });
     });
   });
 
   describe('validateOwnership', () => {
-    it('should return true if user owns biodata', async () => {
-      const biodataId = 1;
-      const userId = 1;
-      const biodata = {
-        id: biodataId,
-        userId,
-        religion: 'Islam',
-      };
+    it.each([
+      [makeBiodata({ userId: 1 }), true],
+      [makeBiodata({ userId: 2 }), false],
+      [null, false],
+    ])('returns %# correctly', async (biodata, expected) => {
+      repo.findOne.mockResolvedValueOnce(biodata as never);
+      expect(await service.validateOwnership(1, 1)).toBe(expected);
+    });
+  });
 
-      mockRepository.findOne.mockResolvedValue(biodata);
-
-      const result = await service.validateOwnership(biodataId, userId);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: biodataId },
-        relations: { user: true }
-      });
-      expect(result).toBe(true);
+  describe('not-found handling', () => {
+    it('updateApprovalStatus throws for an unknown id', async () => {
+      repo.update.mockResolvedValueOnce({ affected: 0 });
+      await expect(service.updateApprovalStatus(99, BiodataApprovalStatus.APPROVED)).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('should return false if user does not own biodata', async () => {
-      const biodataId = 1;
-      const userId = 2;
-      const biodata = {
-        id: biodataId,
-        userId: 1, // Different user
-        religion: 'Islam',
-      };
-
-      mockRepository.findOne.mockResolvedValue(biodata);
-
-      const result = await service.validateOwnership(biodataId, userId);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: biodataId },
-        relations: { user: true }
-      });
-      expect(result).toBe(false);
+    it('trackProfileView throws for an unknown id', async () => {
+      repo.findOne.mockResolvedValueOnce(null as never);
+      await expect(service.trackProfileView(99, undefined, '1.2.3.4')).rejects.toBeInstanceOf(NotFoundException);
     });
+  });
 
-    it('should return false if biodata does not exist', async () => {
-      const biodataId = 999;
-      const userId = 1;
-
-      mockRepository.findOne.mockResolvedValue(null);
-
-      const result = await service.validateOwnership(biodataId, userId);
-
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: biodataId },
-        relations: { user: true }
-      });
-      expect(result).toBe(false);
+  describe('updateStep', () => {
+    it('returns the biodata even when it is not public yet', async () => {
+      const draft = makeBiodata({ biodataApprovalStatus: BiodataApprovalStatus.IN_PROGRESS });
+      repo.findOne.mockResolvedValueOnce(draft as never);
+      expect(await service.updateStep(1, 2, { fullName: 'X' } as any)).toBe(draft);
+      expect(repo.update).toHaveBeenCalledWith(1, { fullName: 'X', step: 2 });
     });
   });
 });
