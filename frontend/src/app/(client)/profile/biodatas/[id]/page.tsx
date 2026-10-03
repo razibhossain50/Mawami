@@ -409,9 +409,7 @@ export default function Profile() {
             className="flex items-center gap-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             onPress={handleBackToSearch}
           >
-            <div className="p-1 bg-white/20 rounded-full">
-              <ArrowLeft className="h-4 w-4" />
-            </div>
+            <ArrowLeft className="h-4 w-4" />
             <span>Back to Search Page</span>
           </Button>
         </div>
@@ -469,7 +467,7 @@ export default function Profile() {
               size="sm"
               className={`flex items-center gap-2 transition-all duration-200 hover:shadow-md ${isFavoriteProfile
                 ? 'bg-rose-500 text-white hover:bg-rose-600'
-                : 'border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700'
+                : 'bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700'
                 }`}
               onPress={handleFavoriteToggle}
               isPending={favoriteLoading}
@@ -1227,13 +1225,13 @@ export default function Profile() {
                   size="lg"
                   className={`font-semibold px-8 py-3 rounded-full transition-all duration-300 hover:shadow-xl group ${isFavoriteProfile
                     ? 'bg-white text-rose-600 hover:bg-rose-50'
-                    : 'border-white text-rose-600 hover:bg-white hover:text-rose-600 hover:border-rose-600'
+                    : 'bg-transparent border-2 border-white text-white hover:bg-white hover:text-rose-600'
                     }`}
                   onPress={handleFavoriteToggle}
                   isPending={favoriteLoading}
                   isDisabled={favoriteLoading}
                 >
-                  <Heart className={`h-4 w-4 mr-2 group-hover:text-rose-600 transition-colors duration-300 ${isFavoriteProfile ? 'fill-current' : ''}`} />
+                  <Heart className={`h-4 w-4 mr-2 transition-colors duration-300 ${isFavoriteProfile ? 'fill-current' : ''}`} />
                   {isFavoriteProfile ? 'Remove from Favorites' : 'Add to Favorites'}
                 </Button>
                 <Button

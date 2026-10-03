@@ -24,6 +24,7 @@
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "database:migration": "ts-node src/database-migration.ts",
     "database:seed": "ts-node src/database-seed.ts",
+    "database:seed:bulk": "ts-node src/database-seed-bulk.ts",
     "database:migration-seed": "ts-node src/database-migration.ts && ts-node src/database-seed.ts"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 "use client";
 import { Pagination } from "@heroui/react";
+import { cn } from "@/services/utils";
 import { getPageItems } from "@/services/pagination";
 
 interface PageNavProps {
@@ -12,8 +13,8 @@ interface PageNavProps {
 
 export function PageNav({ total, page, onChange, className, size }: PageNavProps) {
   return (
-    <Pagination className={className} size={size} aria-label="Pagination">
-      <Pagination.Content>
+    <Pagination className={cn("w-full justify-center", className)} size={size} aria-label="Pagination">
+      <Pagination.Content className="justify-center">
         <Pagination.Item>
           <Pagination.Previous isDisabled={page <= 1} onPress={() => onChange(page - 1)}>
             <Pagination.PreviousIcon />
