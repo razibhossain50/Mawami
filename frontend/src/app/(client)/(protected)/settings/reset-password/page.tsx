@@ -1,7 +1,8 @@
 "use client";
+import { FormInput } from "@/components/ui/form-fields";
 import { useState } from "react";
 import { Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { Card, CardBody, CardHeader, Input, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 
@@ -84,9 +85,9 @@ export default function ResetPassword() {
       <div className="container max-w-7xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={() => router.back()}
+            onPress={() => router.back()}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -96,7 +97,7 @@ export default function ResetPassword() {
 
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">Reset Password</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted">
             Update your password to keep your account secure
           </p>
         </div>
@@ -108,7 +109,7 @@ export default function ResetPassword() {
         )}
 
         <Card>
-          <CardHeader>
+          <Card.Header>
             <div className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-emerald-500" />
               <h3 className="text-lg font-semibold">Change Your Password</h3>
@@ -116,26 +117,26 @@ export default function ResetPassword() {
             <p className="text-sm text-gray-600">
               Enter your current password and choose a new secure password
             </p>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Content>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="oldPassword" className="text-sm font-medium">Current Password</label>
                 <div className="relative">
-                  <Input
+                  <FormInput
                     id="oldPassword"
+                    isRequired
                     type={showOldPassword ? "text" : "password"}
                     value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
+                    onValueChange={(value) => setOldPassword(value)}
                     placeholder="Enter your current password"
-                    required
                   />
                   <Button
+                    variant="outline"
                     type="button"
-                    variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    onPress={() => setShowOldPassword(!showOldPassword)}
                   >
                     {showOldPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -149,20 +150,20 @@ export default function ResetPassword() {
               <div className="space-y-2">
                 <label htmlFor="newPassword" className="text-sm font-medium">New Password</label>
                 <div className="relative">
-                  <Input
+                  <FormInput
                     id="newPassword"
+                    isRequired
                     type={showNewPassword ? "text" : "password"}
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onValueChange={(value) => setNewPassword(value)}
                     placeholder="Enter your new password"
-                    required
                   />
                   <Button
+                    variant="outline"
                     type="button"
-                    variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    onPress={() => setShowNewPassword(!showNewPassword)}
                   >
                     {showNewPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -176,20 +177,20 @@ export default function ResetPassword() {
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</label>
                 <div className="relative">
-                  <Input
+                  <FormInput
                     id="confirmPassword"
+                    isRequired
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onValueChange={(value) => setConfirmPassword(value)}
                     placeholder="Confirm your new password"
-                    required
                   />
                   <Button
+                    variant="outline"
                     type="button"
-                    variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -216,16 +217,16 @@ export default function ResetPassword() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <Button type="submit" className="flex-1" disabled={isLoading}>
+                <Button type="submit" className="flex-1" isDisabled={isLoading}>
                   {isLoading ? "Updating..." : "Update Password"}
                 </Button>
               </div>
             </form>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted">
             Having trouble? Contact our support team for assistance.
           </p>
         </div>

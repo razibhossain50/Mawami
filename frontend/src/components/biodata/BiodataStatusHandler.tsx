@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardBody, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import Link from "next/link";
 import { 
   AlertCircle, 
@@ -183,7 +183,7 @@ export const BiodataStatusHandler: React.FC<BiodataStatusHandlerProps> = ({
           </div>
 
           {/* Content Section */}
-          <CardBody className="p-8">
+          <Card.Content className="p-8">
             <div className="text-center space-y-6">
               <div className="max-w-2xl mx-auto">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">
@@ -232,12 +232,12 @@ export const BiodataStatusHandler: React.FC<BiodataStatusHandlerProps> = ({
                 )}
 
                 <div className="flex justify-center gap-4">
-                  <Button variant="flat">
+                  <Button variant="secondary">
                     <Link href="/profile/biodatas">
                       Browse Other Profiles
                     </Link>
                   </Button>
-                  <Button variant="flat">
+                  <Button variant="secondary">
                     <Link href="/dashboard">
                       Go to Dashboard
                     </Link>
@@ -255,7 +255,7 @@ export const BiodataStatusHandler: React.FC<BiodataStatusHandlerProps> = ({
                 </p>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     </div>

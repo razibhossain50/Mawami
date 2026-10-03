@@ -1,5 +1,5 @@
 'use client';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
+import { Modal, Button } from "@heroui/react";
 import { Crop as CropIcon, X, Check } from "lucide-react";
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -40,21 +40,10 @@ export function ImageCropModal({
 }: ImageCropModalProps) {
   return (
     <>
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        size="3xl"
-        placement="center"
-        backdrop="blur"
-        classNames={{
-          base: "bg-white",
-          header: "border-b border-gray-200",
-          body: "py-6",
-          footer: "border-t border-gray-200"
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
+      <Modal.Backdrop variant="blur" isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <Modal.Container size="lg" placement="center">
+          <Modal.Dialog className="bg-white">
+          <Modal.Header className="flex items-center gap-3 border-b border-gray-200">
             <div className="p-2 bg-blue-500 rounded-lg">
               <CropIcon className="h-5 w-5 text-white" />
             </div>
@@ -62,9 +51,9 @@ export function ImageCropModal({
               <h3 className="text-lg font-bold text-gray-900">{title}</h3>
               <p className="text-sm text-gray-600">Adjust the crop area and click confirm</p>
             </div>
-          </ModalHeader>
+          </Modal.Header>
 
-          <ModalBody>
+          <Modal.Body className="py-6">
             <div className="flex justify-center">
               <div className="relative max-w-full max-h-[400px] overflow-hidden rounded-lg border border-gray-200">
                 <ReactCrop
@@ -92,11 +81,11 @@ export function ImageCropModal({
                 The cropped image will be used as your profile picture.
               </p>
             </div>
-          </ModalBody>
+          </Modal.Body>
 
-          <ModalFooter>
+          <Modal.Footer className="border-t border-gray-200">
             <Button
-              variant="flat"
+              variant="secondary"
               onPress={onClose}
               className="flex items-center gap-2 text-gray-600 hover:bg-gray-100"
               isDisabled={isUploading}
@@ -105,18 +94,19 @@ export function ImageCropModal({
               Cancel
             </Button>
             <Button
-              color="primary"
+              variant="primary"
               onPress={onConfirm}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-              isLoading={isUploading}
+              isPending={isUploading}
               isDisabled={!completedCrop}
             >
               <Check className="h-4 w-4" />
               Confirm Crop
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
 
       {/* Hidden canvas for image processing */}
       <canvas

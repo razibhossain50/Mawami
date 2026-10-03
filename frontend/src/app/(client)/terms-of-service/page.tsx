@@ -1,5 +1,5 @@
 "use client";
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { FileText, Shield, Users, Heart, AlertTriangle, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -23,13 +23,13 @@ export default function TermsOfService() {
         {/* Content */}
         <div className="space-y-8">
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Shield className="h-6 w-6 text-blue-600" />
                 <h2 className="text-xl font-bold text-gray-800">Acceptance of Terms</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   By accessing and using Mawami's matrimony services, you accept and agree to be bound by 
@@ -41,17 +41,17 @@ export default function TermsOfService() {
                   browsers, vendors, customers, merchants, and/or contributors of content.
                 </p>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Users className="h-6 w-6 text-purple-600" />
                 <h2 className="text-xl font-bold text-gray-800">User Responsibilities</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>As a user of our platform, you agree to:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
@@ -63,17 +63,17 @@ export default function TermsOfService() {
                   <li>Report any suspicious or inappropriate behavior</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Heart className="h-6 w-6 text-rose-600" />
                 <h2 className="text-xl font-bold text-gray-800">Matrimony Services</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   Our platform provides matrimony services to help individuals find suitable life partners. 
@@ -87,17 +87,17 @@ export default function TermsOfService() {
                   <li>Privacy protection measures</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-6 w-6 text-orange-600" />
                 <h2 className="text-xl font-bold text-gray-800">Prohibited Activities</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>The following activities are strictly prohibited:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
@@ -109,17 +109,17 @@ export default function TermsOfService() {
                   <li>Using automated tools or bots</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-6 w-6 text-green-600" />
                 <h2 className="text-xl font-bold text-gray-800">Account Termination</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   We reserve the right to terminate or suspend your account at any time for violations 
@@ -134,14 +134,14 @@ export default function TermsOfService() {
                   <li>Non-payment of service fees (if applicable)</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
               <h2 className="text-xl font-bold text-gray-800">Limitation of Liability</h2>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   Mawami shall not be liable for any indirect, incidental, special, consequential, 
@@ -153,7 +153,7 @@ export default function TermsOfService() {
                   on the platform or the results of using our services.
                 </p>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 

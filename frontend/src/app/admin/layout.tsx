@@ -6,8 +6,7 @@ import {AppLayoutContent} from '@/components/layout/AppLayoutContent';
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AdminGuard } from '@/components/AdminGuard'
-import { ToastProvider } from '@/context/ToastContext';
-import { ToastContainer } from '@/components/ui/Toast';
+import { HeroProviders } from '@/components/common/HeroProviders';
 
 
 
@@ -61,10 +60,9 @@ export default function AdminLayout({
             <AdminGuard>
               <ThemeProvider>
                 <SidebarProvider>
-                  <ToastProvider>
+                  <HeroProviders>
                     <AppLayoutContent>{children}</AppLayoutContent>
-                    <ToastContainer />
-                  </ToastProvider>
+                  </HeroProviders>
                 </SidebarProvider>
               </ThemeProvider>
             </AdminGuard>

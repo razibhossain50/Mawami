@@ -1,7 +1,8 @@
 "use client";
+import { FormInput } from "@/components/ui/form-fields";
 import { useState } from "react";
 import { Lock, User, Mail, AtSign } from "lucide-react";
-import { Card, CardBody, CardHeader, Input, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import { logger } from '@/services/logger';
@@ -81,44 +82,38 @@ export default function Settings() {
 
         {/* Profile Settings */}
         <Card>
-          <CardHeader>
+          <Card.Header>
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-blue-500" />
               <h3 className="text-lg font-semibold">Profile Settings</h3>
             </div>
-          </CardHeader>
-          <CardBody className="space-y-6">
+          </Card.Header>
+          <Card.Content className="space-y-6">
             <div className="grid gap-6">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium text-gray-700">Display Name</label>
-                <Input
+                <FormInput
                   id="name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onValueChange={(value) => setName(value)}
                   placeholder="Your full name"
                   startContent={<User className="w-4 h-4 text-gray-400" />}
-                  variant="bordered"
-                  classNames={{
-                    input: "text-sm",
-                    inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                  }}
+                  inputClassName="text-sm"
+                  groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
                 />
               </div>
               
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</label>
-                <Input
+                <FormInput
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onValueChange={(value) => setEmail(value)}
                   placeholder="your@email.com"
                   startContent={<Mail className="w-4 h-4 text-gray-400" />}
-                  variant="bordered"
-                  classNames={{
-                    input: "text-sm",
-                    inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                  }}
+                  inputClassName="text-sm"
+                  groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
                 />
               </div>
             </div>
@@ -130,35 +125,35 @@ export default function Settings() {
             )}
 
             <div className="flex justify-end">
-              <Button 
-                onClick={handleSaveChanges} 
-                disabled={isLoading}
-                color="primary"
+              <Button
+                variant="primary"
+                onPress={handleSaveChanges}
+                isDisabled={isLoading}
                 className="px-8"
               >
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         {/* Security Settings */}
         <Card>
-          <CardHeader>
+          <Card.Header>
             <div className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-emerald-500" />
               <h3 className="text-lg font-semibold">Security</h3>
             </div>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Content>
             <Button
-              variant="bordered"
+              variant="outline"
               className="w-full"
-              onClick={() => router.push('/settings/reset-password')}
+              onPress={() => router.push('/settings/reset-password')}
             >
               Reset Password
             </Button>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     </div>

@@ -1,7 +1,8 @@
 'use client';
+import { FormInput } from "@/components/ui/form-fields";
 
 import React, { useState } from 'react';
-import { Input, Button, Card, CardBody, CardHeader } from '@heroui/react';
+import { Button, Card } from "@heroui/react";
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/services/queryClient';
 import { logger } from '@/services/logger';
@@ -41,8 +42,8 @@ export default function AdminSettingsPage() {
     }));
   }
 
-  const handleInputChange = (field: keyof SettingsFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+  const handleInputChange = (field: keyof SettingsFormData) => (value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -158,12 +159,12 @@ export default function AdminSettingsPage() {
       </div>
 
       <Card className="shadow-lg">
-        <CardHeader className="pb-6">
+        <Card.Header className="pb-6">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
             Profile Information
           </h2>
-        </CardHeader>
-        <CardBody>
+        </Card.Header>
+        <Card.Content>
           <form onSubmit={handleSubmit} className="space-y-6">
             {message && (
               <div className={`p-4 rounded-lg ${message.type === 'success'
@@ -181,23 +182,21 @@ export default function AdminSettingsPage() {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <FormInput
                   label="Full Name"
                   value={formData.fullName}
-                  onChange={handleInputChange('fullName')}
+                  onValueChange={handleInputChange('fullName')}
                   isRequired
                   errorMessage={errors.fullName}
                   isInvalid={!!errors.fullName}
-                  variant="bordered"
                 />
 
-                <Input
+                <FormInput
                   label="Email Address"
                   type="email"
                   value={formData.email}
                   isReadOnly
                   isDisabled
-                  variant="bordered"
                   description="Email address cannot be changed"
                 />
               </div>
@@ -213,37 +212,34 @@ export default function AdminSettingsPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
+                <FormInput
                   label="Current Password"
                   type="password"
                   placeholder="Enter your current password"
                   value={formData.currentPassword}
-                  onChange={handleInputChange('currentPassword')}
+                  onValueChange={handleInputChange('currentPassword')}
                   errorMessage={errors.currentPassword}
                   isInvalid={!!errors.currentPassword}
-                  variant="bordered"
                 />
 
-                <Input
+                <FormInput
                   label="New Password"
                   type="password"
                   placeholder="Enter new password"
                   value={formData.newPassword}
-                  onChange={handleInputChange('newPassword')}
+                  onValueChange={handleInputChange('newPassword')}
                   errorMessage={errors.newPassword}
                   isInvalid={!!errors.newPassword}
-                  variant="bordered"
                 />
 
-                <Input
+                <FormInput
                   label="Confirm New Password"
                   type="password"
                   placeholder="Confirm new password"
                   value={formData.confirmPassword}
-                  onChange={handleInputChange('confirmPassword')}
+                  onValueChange={handleInputChange('confirmPassword')}
                   errorMessage={errors.confirmPassword}
                   isInvalid={!!errors.confirmPassword}
-                  variant="bordered"
                 />
               </div>
             </div>
@@ -251,17 +247,17 @@ export default function AdminSettingsPage() {
             {/* Save Button */}
             <div className="flex justify-end pt-4">
               <Button
+                variant="primary"
                 type="submit"
-                color="primary"
                 size="lg"
-                isLoading={isLoading}
+                isPending={isLoading}
                 className="min-w-32"
               >
                 {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
-        </CardBody>
+        </Card.Content>
       </Card>
     </div>
   );

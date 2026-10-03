@@ -1,5 +1,5 @@
 'use client';
-import { Button, Card, CardBody } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import { Upload, Crop as CropIcon, Trash2, User } from "lucide-react";
 import Image from "next/image";
 import { useRef } from "react";
@@ -75,7 +75,7 @@ export function ImageUploadWithCrop({
       </div>
 
       <Card className="bg-white border border-gray-200">
-        <CardBody className="p-6">
+        <Card.Content className="p-6">
           {displayImage ? (
             <div className="flex flex-col items-center space-y-4">
               {/* Image Preview */}
@@ -102,8 +102,8 @@ export function ImageUploadWithCrop({
               {/* Action Buttons */}
               <div className="flex gap-2">
                 <Button
+                  variant="secondary"
                   size="sm"
-                  variant="flat"
                   onPress={handleFileInputClick}
                   className="flex items-center gap-2"
                 >
@@ -113,9 +113,8 @@ export function ImageUploadWithCrop({
                 
                 {displayImage && (
                   <Button
+                    variant="danger-soft"
                     size="sm"
-                    variant="flat"
-                    color="danger"
                     onPress={handleRemoveImage}
                     className="flex items-center gap-2"
                   >
@@ -134,8 +133,7 @@ export function ImageUploadWithCrop({
 
               {/* Upload Button */}
               <Button
-                color="primary"
-                variant="flat"
+                variant="secondary"
                 onPress={handleFileInputClick}
                 className="flex items-center gap-2"
               >
@@ -149,7 +147,7 @@ export function ImageUploadWithCrop({
               </p>
             </div>
           )}
-        </CardBody>
+        </Card.Content>
       </Card>
 
       {/* Hidden File Input */}

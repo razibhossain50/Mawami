@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Users, Heart, BookmarkCheck, ShoppingCart, Plus, TrendingUp, Eye, Star } from "lucide-react";
-import { Card, CardBody, CardHeader, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import { useProfileView } from "@/hooks/useProfileView";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -56,7 +56,7 @@ export default function Dashboard() {
         {/* Connection Status Card */}
         <div className="mb-8">
           <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-2xl overflow-hidden">
-            <CardBody className="p-8 sm:p-10">
+            <Card.Content className="p-8 sm:p-10">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
                 <div className="space-y-6 flex-1">
                   <div className="flex items-center gap-4">
@@ -80,14 +80,14 @@ export default function Dashboard() {
                   <Button
                     size="lg"
                     className="bg-white text-blue-600 hover:bg-blue-50 shadow-xl font-bold px-4 py-4 text-lg rounded-2xl transition-all duration-300 hover:scale-105"
-                    onClick={() => logger.info('Buy more connections clicked', { userId: user?.id }, 'Dashboard')}
+                    onPress={() => logger.info('Buy more connections clicked', { userId: user?.id }, 'Dashboard')}
                   >
                     <Plus className="h-6 w-6" />
                     Buy More Connections
                   </Button>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 
@@ -109,7 +109,7 @@ export default function Dashboard() {
           )}
           {/* Profile Visits Card */}
           <Card className="bg-white/80 backdrop-blur-sm hover:bg-white/95 transition-all duration-500 border-0 shadow-xl hover:shadow-2xl group overflow-hidden">
-            <CardBody className="p-8">
+            <Card.Content className="p-8">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -145,12 +145,12 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Favorites Card */}
           <Card className="bg-white/80 backdrop-blur-sm hover:bg-white/95 transition-all duration-500 border-0 shadow-xl hover:shadow-2xl group overflow-hidden cursor-pointer">
-            <CardBody className="p-8" onClick={() => router.push('/favorites')}>
+            <Card.Content className="p-8" onClick={() => router.push('/favorites')}>
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -186,12 +186,12 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Shortlisted Card */}
           {/* <Card className="bg-white/80 backdrop-blur-sm hover:bg-white/95 transition-all duration-500 border-0 shadow-xl hover:shadow-2xl group overflow-hidden">
-            <CardBody className="p-8">
+            <Card.Content className="p-8">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -209,7 +209,7 @@ export default function Dashboard() {
                   <p className="text-slate-500 font-medium">3 new shortlists</p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card> */}
         </div>
 
@@ -217,7 +217,7 @@ export default function Dashboard() {
 
         {/* Purchase History */}
         {/* <Card className="bg-white/70 backdrop-blur-sm border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="border-b border-slate-100 pb-4">
+          <Card.Header className="border-b border-slate-100 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
                 <ShoppingCart className="h-6 w-6 text-white" />
@@ -227,8 +227,8 @@ export default function Dashboard() {
                 <p className="text-slate-600">Your recent transactions</p>
               </div>
             </div>
-          </CardHeader>
-          <CardBody className="pt-6">
+          </Card.Header>
+          <Card.Content className="pt-6">
             <div className="space-y-4">
               {[
                 {
@@ -273,11 +273,11 @@ export default function Dashboard() {
               ))}
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100">
-              <Button variant="bordered" className="w-full text-slate-600 border-slate-200 hover:bg-slate-50">
+              <Button variant="outline" className="w-full text-slate-600 border-slate-200 hover:bg-slate-50">
                 View All Transactions
               </Button>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card> */}
       </div>
     </div>

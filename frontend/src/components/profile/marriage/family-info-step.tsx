@@ -1,6 +1,7 @@
 'use client';
+import { FormInput, FormTextarea, FormSelect } from "@/components/ui/form-fields";
 
-import { Input, Select, SelectItem, Textarea, Card, CardBody, CardHeader } from "@heroui/react";
+import {Card} from "@heroui/react";
 
 interface FamilyInfoStepProps {
   data: Record<string, unknown>;
@@ -13,29 +14,14 @@ export function FamilyInfoStep({ data, errors, updateData }: FamilyInfoStepProps
   const brothersCount = data.brothersCount !== undefined && data.brothersCount !== null ? String(data.brothersCount) : '';
   const sistersCount = data.sistersCount !== undefined && data.sistersCount !== null ? String(data.sistersCount) : '';
 
-  const handleSelectionChange = (selection: any, field: string) => {
-    let value: string | undefined;
-    
-    if (typeof selection === 'string') {
-      value = selection;
-    } else if (selection instanceof Set) {
-      const setValues = Array.from(selection);
-      value = setValues.length > 0 ? setValues[0] : undefined;
-    } else if (selection?.currentKey) {
-      value = selection.currentKey;
-    } else if (Array.isArray(selection)) {
-      value = selection.length > 0 ? selection[0] : undefined;
-    }
-
-
-    if (field === 'brothersCount') {
-      updateData({ brothersCount: value ? parseInt(value, 10) : undefined });
-    } else if (field === 'sistersCount') {
-      updateData({ sistersCount: value ? parseInt(value, 10) : undefined });
+  const handleSelectionChange = (value: string | null, field: string) => {
+    if (field === 'brothersCount' || field === 'sistersCount') {
+      updateData({ [field]: value ? parseInt(value, 10) : undefined });
     } else {
-      updateData({ [field]: value });
+      updateData({ [field]: value ?? undefined });
     }
   };
+
 
   return (
     <div className="space-y-8">
@@ -50,151 +36,126 @@ export function FamilyInfoStep({ data, errors, updateData }: FamilyInfoStepProps
 
       <div className="space-y-8">
         {/* Economic Condition */}
-        <Select
+        <FormSelect
           label="Family's Economic Condition"
           placeholder="Select Economic Condition"
-          selectedKeys={data.economicCondition ? [data.economicCondition as string] : []}
-          onSelectionChange={(keys) => handleSelectionChange(keys, 'economicCondition')}
+          value={data.economicCondition ? (data.economicCondition as string) : null}
+          onValueChange={(value) => handleSelectionChange(value, 'economicCondition')}
           isRequired
           errorMessage={errors.economicCondition}
           isInvalid={!!errors.economicCondition}
           className="mb-6"
-        >
-          {['Lower Class', 'Lower Middle Class', 'Middle Class', 'Upper Middle Class', 'Upper Class'].map((item) => (
-            <SelectItem key={item} textValue={item}>
-              {item}
-            </SelectItem>
-          ))}
-        </Select>
+          options={['Lower Class', 'Lower Middle Class', 'Middle Class', 'Upper Middle Class', 'Upper Class'].map((item) => ({ value: String(item), label: item }))}
+        />
 
         {/* Father Information */}
         <Card className="shadow-sm">
-          <CardHeader className="border-b border-gray-200">
+          <Card.Header className="border-b border-gray-200">
             <h3 className="text-lg font-semibold text-slate-800">Father&apos;s Information</h3>
-          </CardHeader>
-          <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
-            <Input
+          </Card.Header>
+          <Card.Content className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+            <FormInput
               label="Father's Name"
               placeholder="Enter father's name"
               value={(data.fatherName as string) || ""}
-              onChange={(e) => updateData({ fatherName: e.target.value })}
+              onValueChange={(value) => updateData({ fatherName: value })}
               isRequired
               description="Only visible for premium users"
               errorMessage={errors.fatherName}
               isInvalid={!!errors.fatherName}
             />
-            <Input
+            <FormInput
               label="Father's Profession"
               placeholder="Enter father's profession"
               value={(data.fatherProfession as string) || ""}
-              onChange={(e) => updateData({ fatherProfession: e.target.value })}
+              onValueChange={(value) => updateData({ fatherProfession: value })}
               isRequired
               errorMessage={errors.fatherProfession}
               isInvalid={!!errors.fatherProfession}
             />
-            <Select
+            <FormSelect
               label="Is your father alive?"
               placeholder="Select Status"
-              selectedKeys={data.fatherAlive ? [data.fatherAlive as string] : []}
-              onSelectionChange={(keys) => handleSelectionChange(keys, 'fatherAlive')}
+              value={data.fatherAlive ? (data.fatherAlive as string) : null}
+              onValueChange={(value) => handleSelectionChange(value, 'fatherAlive')}
               isRequired
               errorMessage={errors.fatherAlive}
               isInvalid={!!errors.fatherAlive}
-            >
-              {['Yes', 'No'].map((item) => (
-                <SelectItem key={item} textValue={item}>
-                  {item}
-                </SelectItem>
-              ))}
-            </Select>
-          </CardBody>
+              options={['Yes', 'No'].map((item) => ({ value: String(item), label: item }))}
+            />
+          </Card.Content>
         </Card>
 
         {/* Mother Information */}
         <Card className="shadow-sm">
-          <CardHeader className="border-b border-gray-200">
+          <Card.Header className="border-b border-gray-200">
             <h3 className="text-lg font-semibold text-slate-800">Mother&apos;s Information</h3>
-          </CardHeader>
-          <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
-            <Input
+          </Card.Header>
+          <Card.Content className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+            <FormInput
               label="Mother's Name"
               placeholder="Enter mother's name"
               value={(data.motherName as string) || ""}
-              onChange={(e) => updateData({ motherName: e.target.value })}
+              onValueChange={(value) => updateData({ motherName: value })}
               description="Only visible for premium users"
               isRequired
               errorMessage={errors.motherName}
               isInvalid={!!errors.motherName}
             />
-            <Input
+            <FormInput
               label="Mother's Profession"
               placeholder="Enter mother's profession"
               value={(data.motherProfession as string) || ""}
-              onChange={(e) => updateData({ motherProfession: e.target.value })}
+              onValueChange={(value) => updateData({ motherProfession: value })}
               isRequired
               errorMessage={errors.motherProfession}
               isInvalid={!!errors.motherProfession}
             />
-            <Select
+            <FormSelect
               label="Is your mother alive?"
               placeholder="Select Status"
-              selectedKeys={data.motherAlive ? [data.motherAlive as string] : []}
-              onSelectionChange={(keys) => handleSelectionChange(keys, 'motherAlive')}
+              value={data.motherAlive ? (data.motherAlive as string) : null}
+              onValueChange={(value) => handleSelectionChange(value, 'motherAlive')}
               isRequired
               errorMessage={errors.motherAlive}
               isInvalid={!!errors.motherAlive}
-            >
-              {['Yes', 'No'].map((item) => (
-                <SelectItem key={item} textValue={item}>
-                  {item}
-                </SelectItem>
-              ))}
-            </Select>
-          </CardBody>
+              options={['Yes', 'No'].map((item) => ({ value: String(item), label: item }))}
+            />
+          </Card.Content>
         </Card>
 
         {/* Siblings Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Select
+          <FormSelect
             label="How many brothers do you have?"
             placeholder="Select Number"
-            selectedKeys={brothersCount ? [brothersCount] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'brothersCount')}
+            value={brothersCount}
+            onValueChange={(value) => handleSelectionChange(value, 'brothersCount')}
             isRequired
             errorMessage={errors.brothersCount}
             isInvalid={!!errors.brothersCount}
-          >
-            {Array.from({ length: 11 }, (_, i) => (
-              <SelectItem key={String(i)} textValue={String(i)}>
-                {i}
-              </SelectItem>
-            ))}
-          </Select>
+            options={Array.from({ length: 11 }, (_, i) => ({ value: String(i), label: String(i) }))}
+          />
 
-          <Select
+          <FormSelect
             label="How many sisters do you have?"
             placeholder="Select Number"
-            selectedKeys={sistersCount ? [sistersCount] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'sistersCount')}
+            value={sistersCount}
+            onValueChange={(value) => handleSelectionChange(value, 'sistersCount')}
             isRequired
             errorMessage={errors.sistersCount}
             isInvalid={!!errors.sistersCount}
-          >
-            {Array.from({ length: 11 }, (_, i) => (
-              <SelectItem key={String(i)} textValue={String(i)}>
-                {i}
-              </SelectItem>
-            ))}
-          </Select>
+            options={Array.from({ length: 11 }, (_, i) => ({ value: String(i), label: String(i) }))}
+          />
         </div>
 
         {/* Family Details */}
-        <Textarea
+        <FormTextarea
           label="Write details about yourself and your family"
           placeholder="Share any additional information about yourself and your family background"
           value={(data.familyDetails as string) || ""}
-          onChange={(e) => updateData({ familyDetails: e.target.value })}
-          minRows={4}
+          onValueChange={(value) => updateData({ familyDetails: value })}
+          rows={4}
           className="mb-8"
         />
       </div>

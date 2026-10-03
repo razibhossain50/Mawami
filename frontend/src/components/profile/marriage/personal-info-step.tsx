@@ -1,9 +1,9 @@
 'use client';
-import { Input, Select, SelectItem, Textarea, Checkbox, Card, CardBody, CardHeader, DatePicker } from "@heroui/react";
+import { FormInput, FormTextarea, FormSelect, FormDatePicker } from "@/components/ui/form-fields";
+import { Checkbox, Card } from "@heroui/react";
 import { LocationSelector } from "@/components/form/LocationSelector";
 import { useEffect } from "react";
 import { ageFromDob } from "@/services/utils";
-import { parseDate, CalendarDate, DateValue } from "@internationalized/date";
 
 interface PersonalInfoStepProps {
   data: Record<string, unknown>;
@@ -56,22 +56,8 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
     { key: 'upper-7', label: 'Upper 7 feet' }
   ];
 
-  const handleSelectionChange = (selection: unknown, field: string) => {
-    let value: string | undefined;
-
-    if (typeof selection === 'string') {
-      value = selection;
-    } else if (selection instanceof Set) {
-      const setValues = Array.from(selection);
-      value = setValues.length > 0 ? setValues[0] : undefined;
-    } else if (selection && typeof selection === 'object' && 'currentKey' in selection) {
-      value = (selection as { currentKey: string }).currentKey;
-    } else if (Array.isArray(selection)) {
-      value = selection.length > 0 ? selection[0] : undefined;
-    }
-
-    console.log(`🔄 Selection changed for ${field}:`, { selection, value });
-    updateData({ [field]: value });
+  const handleSelectionChange = (value: string | null, field: string) => {
+    updateData({ [field]: value ?? undefined });
   };
 
   // Age is derived from the date of birth; keep the form's `age` field in sync with it
@@ -131,84 +117,50 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
           {/* Religion */}
-          <Select
+          <FormSelect
             label="Religion"
             placeholder="Select Religion"
-            selectedKeys={data.religion ? [data.religion as string] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'religion')}
+            value={data.religion ? data.religion as string : null}
+            onValueChange={(value) => handleSelectionChange(value, 'religion')}
             isRequired
             errorMessage={errors.religion}
             isInvalid={!!errors.religion}
-          >
-            {['Islam', 'Christianity', 'Hinduism', 'Buddhism', 'Other'].map((item) => (
-              <SelectItem key={item} textValue={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </Select>
+            options={['Islam', 'Christianity', 'Hinduism', 'Buddhism', 'Other'].map((item) => ({ value: String(item), label: item }))}
+          />
 
           {/* Biodata Type */}
-          <Select
+          <FormSelect
             label="Biodata Type"
             placeholder="Select Type"
-            selectedKeys={data.biodataType ? [data.biodataType as string] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'biodataType')}
+            value={data.biodataType ? data.biodataType as string : null}
+            onValueChange={(value) => handleSelectionChange(value, 'biodataType')}
             isRequired
             errorMessage={errors.biodataType}
             isInvalid={!!errors.biodataType}
-          >
-            {['Male', 'Female'].map((item) => (
-              <SelectItem key={item} textValue={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </Select>
+            options={['Male', 'Female'].map((item) => ({ value: String(item), label: item }))}
+          />
           {/* Marital Status */}
-          <Select
+          <FormSelect
             label="Marital Status"
             placeholder="Select Status"
-            selectedKeys={data.maritalStatus ? [data.maritalStatus as string] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'maritalStatus')}
+            value={data.maritalStatus ? data.maritalStatus as string : null}
+            onValueChange={(value) => handleSelectionChange(value, 'maritalStatus')}
             isRequired
             errorMessage={errors.maritalStatus}
             isInvalid={!!errors.maritalStatus}
-          >
-            {['Married', 'Unmarried', 'Divorced', 'Widow', 'Widower'].map((item) => (
-              <SelectItem key={item} textValue={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </Select>
+            options={['Married', 'Unmarried', 'Divorced', 'Widow', 'Widower'].map((item) => ({ value: String(item), label: item }))}
+          />
 
           {/* Date of Birth */}
           <div className="space-y-2.5">
-            <DatePicker
+            <FormDatePicker
               label="Date of Birth"
-              value={(() => {
-                try {
-                  return data.dateOfBirth && typeof data.dateOfBirth === 'string' && data.dateOfBirth.trim() 
-                    ? parseDate(data.dateOfBirth as string) as any
-                    : null;
-                } catch (error) {
-                  console.log('❌ Error parsing date for DatePicker:', error);
-                  return null;
-                }
-              })()}
-              onChange={(date) => {
-                if (date) {
-                  const dateString = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-                  updateData({ dateOfBirth: dateString });
-                } else {
-                  updateData({ dateOfBirth: "" });
-                }
-              }}
-              maxValue={parseDate(new Date().toISOString().split('T')[0]) as any}
-              showMonthAndYearPickers
+              value={typeof data.dateOfBirth === 'string' ? data.dateOfBirth : ''}
+              onValueChange={(dateOfBirth) => updateData({ dateOfBirth })}
+              maxValue={new Date().toISOString().slice(0, 10)}
               isRequired
               errorMessage={errors.dateOfBirth || errors.age}
               isInvalid={!!(errors.dateOfBirth || errors.age)}
-              variant="flat"
-              granularity="day"
             />
             {/* Age Display and Error */}
             {calculatedAge !== null && (
@@ -223,32 +175,23 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
             )}
           </div>
           {/* Height */}
-          <Select
+          <FormSelect
             label="Height"
             placeholder="Select Height"
-            selectedKeys={data.height ? [data.height as string] : []}
-            onSelectionChange={(keys) => {
-              console.log('🔄 Height selection changed:', { keys, currentHeight: data.height });
-              handleSelectionChange(keys, 'height');
-            }}
+            value={data.height ? (data.height as string) : null}
+            onValueChange={(value) => handleSelectionChange(value, 'height')}
             isRequired
             errorMessage={errors.height}
             isInvalid={!!errors.height}
-          >
-            {heightOptions.map((item) => (
-              <SelectItem key={item.key} textValue={item.label}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </Select>
+            options={heightOptions.map((item) => ({ value: item.key, label: item.label }))}
+          />
           {/* Weight */}
-          <Input
+          <FormInput
             type="number"
             label="Weight"
             placeholder="Enter weight"
             value={data.weight ? String(data.weight) : ""}
-            onChange={(e) => {
-              const value = e.target.value;
+            onValueChange={(value) => {
               updateData({ weight: value ? parseInt(value) || undefined : undefined });
             }}
             endContent={<span className="text-slate-500 text-sm">kg</span>}
@@ -258,61 +201,51 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
           />
 
           {/* Complexion */}
-          <Select
+          <FormSelect
             label="Complexion"
             placeholder="Select Complexion"
-            selectedKeys={data.complexion ? [data.complexion as string] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'complexion')}
+            value={data.complexion ? data.complexion as string : null}
+            onValueChange={(value) => handleSelectionChange(value, 'complexion')}
             isRequired
             errorMessage={errors.complexion}
             isInvalid={!!errors.complexion}
-          >
-            {['Black', 'Dusky', 'Wheatish', 'Fair', 'Very Fair'].map((item) => (
-              <SelectItem key={item} textValue={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </Select>
+            options={['Black', 'Dusky', 'Wheatish', 'Fair', 'Very Fair'].map((item) => ({ value: String(item), label: item }))}
+          />
 
           {/* Profession */}
-          <Input
+          <FormInput
             label="Profession"
             placeholder="Enter your profession"
             value={(data.profession as string) || ""}
-            onChange={(e) => updateData({ profession: e.target.value })}
+            onValueChange={(value) => updateData({ profession: value })}
             isRequired
             errorMessage={errors.profession}
             isInvalid={!!errors.profession}
           />
 
           {/* Blood Group */}
-          <Select
+          <FormSelect
             label="Blood Group"
             placeholder="Select Blood Group"
-            selectedKeys={data.bloodGroup ? [data.bloodGroup as string] : []}
-            onSelectionChange={(keys) => handleSelectionChange(keys, 'bloodGroup')}
+            value={data.bloodGroup ? data.bloodGroup as string : null}
+            onValueChange={(value) => handleSelectionChange(value, 'bloodGroup')}
             isRequired
             errorMessage={errors.bloodGroup}
             isInvalid={!!errors.bloodGroup}
-          >
-            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map((item) => (
-              <SelectItem key={item} textValue={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </Select>
+            options={['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map((item) => ({ value: String(item), label: item }))}
+          />
         </div>
       </div>
 
       {/* Address Section */}
       <Card className="mt-8 shadow-md">
-        <CardHeader className="border-b pb-4 border-gray-200">
+        <Card.Header className="border-b pb-4 border-gray-200">
           <h3 className="text-xl font-semibold text-slate-800 flex items-center gap-3">
             <span className="w-1.5 h-6 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-lg" />
             Address Information
           </h3>
-        </CardHeader>
-        <CardBody className="space-y-8">
+        </Card.Header>
+        <Card.Content className="space-y-8">
           {/* Permanent Address */}
           <div>
             <div className="rounded-lg bg-slate-50 p-4 shadow-inner">
@@ -328,11 +261,11 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
                 isRequired
               />
               <div className="mt-4">
-                <Input
+                <FormInput
                   label="Area or Village Name"
                   placeholder="Enter area or village name"
                   value={(data.permanentArea as string) || ""}
-                  onChange={(e) => updateData({ permanentArea: e.target.value })}
+                  onValueChange={(value) => updateData({ permanentArea: value })}
                   isRequired
                   errorMessage={errors.permanentArea}
                   isInvalid={!!errors.permanentArea}
@@ -345,15 +278,20 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
           <div className="flex items-center space-x-2 px-2">
             <Checkbox
               isSelected={(data.sameAsPermanent as boolean) || false}
-              onValueChange={handleSameAddressChange}
+              onChange={handleSameAddressChange}
               isDisabled={!isPermanentAddressComplete()}
             >
-              Present address is same as permanent address
-              {!isPermanentAddressComplete() && (
-                <span className="text-sm text-gray-500 ml-2">
-                  (Complete permanent address first)
-                </span>
-              )}
+              <Checkbox.Content>
+                <Checkbox.Control>
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                Present address is same as permanent address
+                {!isPermanentAddressComplete() && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (Complete permanent address first)
+                  </span>
+                )}
+              </Checkbox.Content>
             </Checkbox>
           </div>
 
@@ -372,11 +310,11 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
                 isRequired
               />
               <div className="mt-4">
-                <Input
+                <FormInput
                   label="Area or Village Name"
                   placeholder="Enter area or village name"
                   value={(data.presentArea as string) || ""}
-                  onChange={(e) => updateData({ presentArea: e.target.value })}
+                  onValueChange={(value) => updateData({ presentArea: value })}
                   isRequired
                   errorMessage={errors.presentArea}
                   isInvalid={!!errors.presentArea}
@@ -384,16 +322,16 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
               </div>
             </div>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
 
       {/* Health Issues */}
-      <Textarea
+      <FormTextarea
         label="Do you have any physical or mental health issues?"
         placeholder="Please describe any health issues or write 'None' if you don't have any"
         value={(data.healthIssues as string) || ""}
-        onChange={(e) => updateData({ healthIssues: e.target.value })}
-        minRows={3}
+        onValueChange={(value) => updateData({ healthIssues: value })}
+        rows={3}
         isRequired
         errorMessage={errors.healthIssues}
         isInvalid={!!errors.healthIssues}

@@ -1,11 +1,11 @@
 "use client";
+import { FormInput, FormSelect } from "@/components/ui/form-fields";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import {
-    Card, CardBody, CardHeader, Button, Select, SelectItem, Input, Chip,
-    Pagination, Avatar, Divider
-} from "@heroui/react";
+import { Card, Button, Chip, Avatar, Separator } from "@heroui/react";
+import { LinkButton } from "@/components/ui/link-button";
+import { PageNav } from "@/components/ui/page-nav";
 import { Search, User, Eye, Heart, Sparkles, Star } from "lucide-react";
 import { LocationSelector } from "@/components/form/LocationSelector";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -376,51 +376,40 @@ export const BiodataSearch = () => {
 
                 {/* Enhanced Search and Filters */}
                 <Card className="overflow-visible w-full bg-white/95  border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-                    <CardBody className="p-8 overflow-y-visible">
+                    <Card.Content className="p-8 overflow-y-visible">
                         
                         
                         <div className="grid gap-6 md:grid-cols-4">
                             <div className="space-y-2">
-                                <Select
-                                    id="gender-select"
-                                    label="I'm looking for"
-                                    aria-label="Select gender preference"
-                                    size="lg"
-                                    placeholder="Select gender"
-                                    selectedKeys={selectedGender ? new Set([selectedGender]) : new Set()}
-                                    onSelectionChange={(keys) => {
-                                        const newValue = Array.from(keys)[0] as string;
+                                <FormSelect
+                                  id="gender-select"
+                                  label="I'm looking for"
+                                  aria-label="Select gender preference"
+                                  placeholder="Select gender"
+                                  value={selectedGender ? selectedGender : null}
+                                  onValueChange={(selected) => {
+                                        const newValue = selected ?? "";
                                         setSelectedGender(newValue);
                                     }}
-                                    className="w-full"
-                                >
-                                    <SelectItem key="all">All</SelectItem>
-                                    <SelectItem key="Male">Male</SelectItem>
-                                    <SelectItem key="Female">Female</SelectItem>
-                                </Select>
+                                  className="w-full"
+                                  options={[{ value: "all", label: "All" }, { value: "Male", label: "Male" }, { value: "Female", label: "Female" }]}
+                                />
                             </div>
 
                             <div className="space-y-2">
-                                <Select
-                                    id="marital-status-select"
-                                    label="Marital status"
-                                    aria-label="Select marital status preference"
-                                    size="lg"
-                                    placeholder="Select marital status"
-                                    selectedKeys={selectedMaritalStatus ? new Set([selectedMaritalStatus]) : new Set()}
-                                    onSelectionChange={(keys) => {
-                                        const newValue = Array.from(keys)[0] as string;
+                                <FormSelect
+                                  id="marital-status-select"
+                                  label="Marital status"
+                                  aria-label="Select marital status preference"
+                                  placeholder="Select marital status"
+                                  value={selectedMaritalStatus ? selectedMaritalStatus : null}
+                                  onValueChange={(selected) => {
+                                        const newValue = selected ?? "";
                                         setSelectedMaritalStatus(newValue);
                                     }}
-                                    className="w-full"
-                                >
-                                    <SelectItem key="all">All</SelectItem>
-                                    <SelectItem key="Unmarried">Unmarried</SelectItem>
-                                    <SelectItem key="Married">Married</SelectItem>
-                                    <SelectItem key="Divorced">Divorced</SelectItem>
-                                    <SelectItem key="Widow">Widow</SelectItem>
-                                    <SelectItem key="Widower">Widower</SelectItem>
-                                </Select>
+                                  className="w-full"
+                                  options={[{ value: "all", label: "All" }, { value: "Unmarried", label: "Unmarried" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widow", label: "Widow" }, { value: "Widower", label: "Widower" }]}
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -433,14 +422,13 @@ export const BiodataSearch = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <Input
+                                <FormInput
                                     id="biodata-number-input"
                                     label="Biodata Number"
                                     aria-label="Enter biodata number to search"
-                                    size="lg"
                                     placeholder="Enter biodata number"
                                     value={biodataNumber}
-                                    onChange={(e) => setBiodataNumber(e.target.value)}
+                                    onValueChange={(value) => setBiodataNumber(value)}
                                     className="w-full"
                                 />
                             </div>
@@ -450,19 +438,18 @@ export const BiodataSearch = () => {
                             className="w-full mt-8 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                             size="lg"
                             onPress={handleSearch}
-                            startContent={<Search className="h-5 w-5" />}
-                            isLoading={loading}
+                            isPending={loading}
                             isDisabled={loading}
-                        >
+                        >{<Search className="h-5 w-5" />}
                             {loading ? 'Searching...' : 'Find Your Partner'}
                         </Button>
-                    </CardBody>
+                    </Card.Content>
                 </Card>
 
                 {/* Enhanced Biodatas Grid */}
                 {!hasSearched ? (
                     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                        <CardBody className="text-center py-16">
+                        <Card.Content className="text-center py-16">
                             <div className="relative">
                                 {/* Decorative background */}
                                 <div className="absolute inset-0 opacity-5">
@@ -482,7 +469,7 @@ export const BiodataSearch = () => {
                                     </p>
                                 </div>
                             </div>
-                        </CardBody>
+                        </Card.Content>
                     </Card>
                 ) : loading ? (
                     <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-8 space-y-6">
@@ -501,14 +488,14 @@ export const BiodataSearch = () => {
                             {[1, 2, 3, 4, 5, 6].map((i) => (
                                 <Card key={i} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden animate-pulse">
                                     {/* Skeleton Header */}
-                                    <CardHeader className="bg-gradient-to-r from-gray-200 to-gray-300 pb-2 relative">
+                                    <Card.Header className="bg-gradient-to-r from-gray-200 to-gray-300 pb-2 relative">
                                         <div className="flex justify-between items-start w-full">
                                             <div className="h-6 bg-gray-300 rounded-full w-20"></div>
                                             <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
                                         </div>
-                                    </CardHeader>
+                                    </Card.Header>
 
-                                    <CardBody className="space-y-3 md:space-y-6 p-3 md:p-4">
+                                    <Card.Content className="space-y-3 md:space-y-6 p-3 md:p-4">
                                         {/* Skeleton Profile Section */}
                                         <div className="grid grid-cols-24">
                                             <div className="col-span-6 flex justify-center">
@@ -526,7 +513,7 @@ export const BiodataSearch = () => {
 
                                         {/* Skeleton Button */}
                                         <div className="h-10 bg-gray-200 rounded-lg w-full"></div>
-                                    </CardBody>
+                                    </Card.Content>
                                 </Card>
                             ))}
                         </div>
@@ -536,27 +523,26 @@ export const BiodataSearch = () => {
                         {currentBiodatas.map((biodata) => (
                             <Card key={biodata.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group overflow-hidden">
                                 {/* Card Header with Gradient */}
-                                <CardHeader className="bg-gradient-to-r from-rose-400 to-pink-500 text-white pb-2 relative">
+                                <Card.Header className="bg-gradient-to-r from-rose-400 to-pink-500 text-white pb-2 relative">
                                     <div className="absolute top-2 right-2 opacity-20">
                                         <Sparkles className="h-4 w-4 text-rose-500 animate-pulse" aria-hidden="true" />
                                     </div>
                                     <div className="flex justify-between items-start w-full">
                                         <Chip
-                                            color={biodata.biodataType?.toLowerCase() === "male" ? "primary" : "secondary"}
-                                            variant="flat"
+                                            color={biodata.biodataType?.toLowerCase() === "male" ? "accent" : "default"}
+                                            variant="soft"
                                             size="sm"
                                             className="bg-white/90 backdrop-blur-sm"
-                                            startContent={<Star className="h-3 w-3" />}
-                                        >
+                                        >{<Star className="h-3 w-3" />}
                                             BD ID - {biodata.id}
                                         </Chip>
                                         <Button
+                                            variant="outline"
                                             isIconOnly
-                                            variant="ghost"
                                             size="sm"
                                             onPress={() => handleFavoriteToggle(biodata.id)}
-                                            isLoading={favoriteLoading[biodata.id]}
-                                            disabled={favoriteLoading[biodata.id]}
+                                            isPending={favoriteLoading[biodata.id]}
+                                            isDisabled={favoriteLoading[biodata.id]}
                                             className={`${favoriteIds.has(biodata.id) ? "bg-white/90" : "bg-white/90 text-gray-400 hover:text-red-500"} transition-all duration-200`}
                                             aria-label={favoriteIds.has(biodata.id) ? `Remove ${biodata.fullName} from favorites` : `Add ${biodata.fullName} to favorites`}
                                         >
@@ -565,35 +551,35 @@ export const BiodataSearch = () => {
                                             />
                                         </Button>
                                     </div>
-                                </CardHeader>
+                                </Card.Header>
 
-                                <CardBody className="space-y-3 md:space-y-6 p-3 md:p-4">
+                                <Card.Content className="space-y-3 md:space-y-6 p-3 md:p-4">
                                     {/* Enhanced Profile Avatar */}
                                     <div className="grid grid-cols-24">
                                         <div className="col-span-6 flex justify-center">
                                             <div className="relative">
                                                 {
                                                     biodata.biodataType == "Male" ? (
-                                                        <Avatar
-                                                            src={(biodata.profilePicture && biodata.profilePictureVisible) ?
-                                                                getImageUrl(biodata.profilePicture) :
-                                                                "icons/male.png"}
-                                                            name={biodata.fullName}
-                                                            size="lg"
-                                                            className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
-                                                            alt={`Profile picture of ${biodata.fullName}`}
-                                                        />
+                                                        <Avatar size="lg" className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                                            <Avatar.Image
+                                                                src={(biodata.profilePicture && biodata.profilePictureVisible) ?
+                                                                    getImageUrl(biodata.profilePicture) :
+                                                                    "/icons/male.png"}
+                                                                alt={`Profile picture of ${biodata.fullName}`}
+                                                            />
+                                                            <Avatar.Fallback>{biodata.fullName?.charAt(0) || "?"}</Avatar.Fallback>
+                                                        </Avatar>
 
                                                     ) : (
-                                                        <Avatar
-                                                            src={(biodata.profilePicture && biodata.profilePictureVisible) ?
-                                                                getImageUrl(biodata.profilePicture) :
-                                                                "icons/female.png"}
-                                                            name={biodata.fullName}
-                                                            size="lg"
-                                                            className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
-                                                            alt={`Profile picture of ${biodata.fullName}`}
-                                                        />
+                                                        <Avatar size="lg" className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                                            <Avatar.Image
+                                                                src={(biodata.profilePicture && biodata.profilePictureVisible) ?
+                                                                    getImageUrl(biodata.profilePicture) :
+                                                                    "/icons/female.png"}
+                                                                alt={`Profile picture of ${biodata.fullName}`}
+                                                            />
+                                                            <Avatar.Fallback>{biodata.fullName?.charAt(0) || "?"}</Avatar.Fallback>
+                                                        </Avatar>
                                                     )
                                                 }
                                             </div>
@@ -628,16 +614,15 @@ export const BiodataSearch = () => {
 
                                     </div>
 
-                                    <Divider className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                                    <Separator className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
 
                                     {/* Enhanced View Profile Button */}
-                                    <Button
-                                        as={Link}
+                                    <LinkButton
                                         href={`/profile/biodatas/${biodata.id}`}
                                         className="w-full bg-white border-1 text-rose-500 border-rose-500 hover:from-rose-600 hover:to-pink-600 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                                         size="md"
-                                        startContent={<Eye className="h-4 w-4" />}
-                                        onPress={() => {
+                                        variant="outline"
+                                        onClick={() => {
                                             // Save current search state before navigating to profile
                                             try {
                                                 const searchState = {
@@ -655,16 +640,16 @@ export const BiodataSearch = () => {
                                                 console.warn('Failed to save search state:', error);
                                             }
                                         }}
-                                    >
+                                    >{<Eye className="h-4 w-4" />}
                                         View Full Profile
-                                    </Button>
-                                </CardBody>
+                                    </LinkButton>
+                                </Card.Content>
                             </Card>
                         ))}
                     </div>
                 ) : (
                     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                        <CardBody className="text-center py-16">
+                        <Card.Content className="text-center py-16">
                             <div className="relative">
                                 {/* Decorative background */}
                                 <div className="absolute inset-0 opacity-5">
@@ -692,16 +677,14 @@ export const BiodataSearch = () => {
                                                     setSelectedLocation("");
                                                     setBiodataNumber("");
                                                 }}
-                                                startContent={<Search className="h-4 w-4" />}
-                                            >
+                                            >{<Search className="h-4 w-4" />}
                                                 Clear All Filters
                                             </Button>
                                             <Button
-                                                variant="flat"
+                                                variant="secondary"
                                                 className="bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
                                                 onPress={() => void refetch()}
-                                                startContent={<Sparkles className="h-4 w-4" />}
-                                            >
+                                            >{<Sparkles className="h-4 w-4" />}
                                                 Refresh Profiles
                                             </Button>
                                         </div>
@@ -722,7 +705,7 @@ export const BiodataSearch = () => {
                                             <h3 className="text-xl font-semibold text-gray-900 mb-2">Oops! Something went wrong</h3>
                                             <p className="text-red-600 mb-6">{error}</p>
                                             <Button
-                                                color="primary"
+                                                variant="primary"
                                                 onPress={() => window.location.reload()}
                                                 className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
                                             >
@@ -733,21 +716,14 @@ export const BiodataSearch = () => {
                                 )
                                 }
                             </div>
-                        </CardBody>
+                        </Card.Content>
                     </Card>
                 )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="flex justify-center">
-                        <Pagination
-                            total={totalPages}
-                            page={currentPage}
-                            onChange={setCurrentPage}
-                            showControls
-                            showShadow
-                            color="secondary"
-                        />
+                        <PageNav total={totalPages} page={currentPage} onChange={setCurrentPage} />
                     </div>
                 )}
 

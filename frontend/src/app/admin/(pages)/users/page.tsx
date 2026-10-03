@@ -1,12 +1,11 @@
 "use client"
+import { FormInput, FormSelect } from "@/components/ui/form-fields";
 import type { SVGProps } from "react";
 import type { Selection, ChipProps, SortDescriptor } from "@heroui/react";
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
-import {
-    Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, DropdownTrigger,
-    Dropdown, DropdownMenu, DropdownItem, Chip, User, Pagination, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem
-} from "@heroui/react";
+import { Table, Button, Dropdown, Chip, Label, Modal } from "@heroui/react";
+import { PageNav } from "@/components/ui/page-nav";
 import { Plus, EllipsisVertical, Search, ChevronDown, Trash2 } from "lucide-react";
 import { logger } from '@/services/logger';
 import { adminApi } from '@/services/api-client';
@@ -57,7 +56,7 @@ interface DatabaseUser {
 
 const roleColorMap: Record<string, ChipProps["color"]> = {
     user: "default",
-    admin: "primary",
+    admin: "accent",
     superadmin: "success",
 };
 
@@ -66,7 +65,6 @@ export default function Users() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [filterValue, setFilterValue] = React.useState("");
-    const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set([]));
     const [roleFilter, setRoleFilter] = React.useState<Selection>("all");
     const [rowsPerPage, setRowsPerPage] = React.useState(5);
     const [sortDescriptor, setSortDescriptor] = React.useState<SortDescriptor>({
@@ -390,15 +388,8 @@ export default function Users() {
 
     const pages = Math.ceil(filteredItems.length / rowsPerPage) || 1;
 
-    const items = React.useMemo(() => {
-        const start = (page - 1) * rowsPerPage;
-        const end = start + rowsPerPage;
-
-        return filteredItems.slice(start, end);
-    }, [page, filteredItems, rowsPerPage]);
-
     const sortedItems = React.useMemo(() => {
-        return [...items].sort((a: DatabaseUser, b: DatabaseUser) => {
+        return [...filteredItems].sort((a: DatabaseUser, b: DatabaseUser) => {
             let first: string | number = a[sortDescriptor.column as keyof DatabaseUser] as string | number;
             let second: string | number = b[sortDescriptor.column as keyof DatabaseUser] as string | number;
 
@@ -414,7 +405,13 @@ export default function Users() {
 
             return sortDescriptor.direction === "descending" ? -cmp : cmp;
         });
-    }, [sortDescriptor, items]);
+    }, [sortDescriptor, filteredItems]);
+
+    // Current page of the sorted results
+    const pageItems = React.useMemo(() => {
+        const start = (page - 1) * rowsPerPage;
+        return sortedItems.slice(start, start + rowsPerPage);
+    }, [page, sortedItems, rowsPerPage]);
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -451,7 +448,7 @@ export default function Users() {
                         className="capitalize"
                         color={roleColorMap[user.role] || "default"}
                         size="sm"
-                        variant="flat"
+                        variant="soft"
                     >
                         {user.role}
                     </Chip>
@@ -469,29 +466,27 @@ export default function Users() {
                     return (
                         <div className="relative flex justify-end items-center gap-2">
                             <Dropdown>
-                                <DropdownTrigger>
-                                    <Button isIconOnly size="sm" variant="light">
-                                        <EllipsisVertical className="text-default-300" />
-                                    </Button>
-                                </DropdownTrigger>
-                                <DropdownMenu onAction={(key) => {
-                                    if (key === "edit") {
-                                        handleOpenEditModal(user);
-                                    } else if (key === "delete") {
-                                        setUserToDelete(user);
-                                        setDeleteModalOpen(true);
-                                    }
-                                }}>
-                                    <DropdownItem key="edit">Edit</DropdownItem>
-                                    <DropdownItem
-                                        key="delete"
-                                        className="text-danger"
-                                        color="danger"
-                                        startContent={<Trash2 className="w-4 h-4" />}
-                                    >
-                                        Delete
-                                    </DropdownItem>
-                                </DropdownMenu>
+                                <Button variant="ghost" isIconOnly size="sm" aria-label={`Actions for ${user.fullName || user.email}`}>
+                                    <EllipsisVertical className="text-muted" />
+                                </Button>
+                                <Dropdown.Popover>
+                                    <Dropdown.Menu onAction={(key) => {
+                                        if (key === "edit") {
+                                            handleOpenEditModal(user);
+                                        } else if (key === "delete") {
+                                            setUserToDelete(user);
+                                            setDeleteModalOpen(true);
+                                        }
+                                    }}>
+                                        <Dropdown.Item id="edit" textValue="Edit">
+                                            <Label>Edit</Label>
+                                        </Dropdown.Item>
+                                        <Dropdown.Item id="delete" textValue="Delete" variant="danger">
+                                            <Trash2 className="w-4 h-4" />
+                                            <Label>Delete</Label>
+                                        </Dropdown.Item>
+                                    </Dropdown.Menu>
+                                </Dropdown.Popover>
                             </Dropdown>
                         </div>
                     );
@@ -540,56 +535,56 @@ export default function Users() {
             <div className="flex flex-col gap-4">
 
                 <div className="flex justify-between gap-3 items-end">
-                    <Input
-                        isClearable
+                    <FormInput
                         className="w-full sm:max-w-[44%]"
                         placeholder="Search by name or email..."
                         startContent={<Search />}
                         value={filterValue}
-                        onClear={() => onClear()}
                         onValueChange={onSearchChange}
+                        onClear={onClear}
                     />
                     <div className="flex gap-3">
                         <Dropdown>
-                            <DropdownTrigger className="hidden sm:flex">
-                                <Button endContent={<ChevronDown className="text-small" />} variant="flat">
-                                    Role
-                                </Button>
-                            </DropdownTrigger>
-                            <DropdownMenu
-                                disallowEmptySelection
-                                aria-label="Role Filter"
-                                closeOnSelect={false}
-                                selectedKeys={roleFilter}
-                                selectionMode="multiple"
-                                onSelectionChange={setRoleFilter}
-                            >
-                                {roleOptions.map((role) => (
-                                    <DropdownItem key={role.uid} className="capitalize">
-                                        {capitalize(role.name)}
-                                    </DropdownItem>
-                                ))}
-                            </DropdownMenu>
+                            <Button variant="secondary" className="hidden sm:flex">
+                                Role
+                                <ChevronDown className="text-small" />
+                            </Button>
+                            <Dropdown.Popover>
+                                <Dropdown.Menu
+                                    disallowEmptySelection
+                                    aria-label="Role Filter"
+                                    shouldCloseOnSelect={false}
+                                    selectedKeys={roleFilter}
+                                    selectionMode="multiple"
+                                    onSelectionChange={setRoleFilter}
+                                >
+                                    {roleOptions.map((role) => (
+                                        <Dropdown.Item key={role.uid} id={role.uid} textValue={role.name} className="capitalize">
+                                            <Dropdown.ItemIndicator />
+                                            <Label>{capitalize(role.name)}</Label>
+                                        </Dropdown.Item>
+                                    ))}
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
                         </Dropdown>
 
                         {/* Only show Add New User button for superadmins */}
                         {currentUser?.role === 'superadmin' && (
                             <Button
-                                color="primary"
-                                endContent={<Plus />}
+                                variant="primary"
                                 onPress={() => setAddUserModalOpen(true)}
                             >
                                 Add New User
-                            </Button>
+                            {<Plus />}</Button>
                         )}
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-default-400 text-small">Total {users.length} users</span>
-                    <label className="flex items-center text-default-400 text-small">
+                    <span className="text-muted text-small">Total {users.length} users</span>
+                    <label className="flex items-center text-muted text-small">
                         Rows per page:
                         <select
-                            className="bg-transparent outline-solid outline-transparent text-default-400 text-small"
+                            className="bg-transparent outline-solid outline-transparent text-muted text-small"
                             onChange={onRowsPerPageChange}
                         >
                             <option value="5">5</option>
@@ -605,31 +600,21 @@ export default function Users() {
     const bottomContent = React.useMemo(() => {
         return (
             <div className="py-2 px-2 flex justify-between items-center">
-                <span className="w-[30%] text-small text-default-400">
-                    {selectedKeys === "all"
-                        ? "All items selected"
-                        : `${selectedKeys.size} of ${filteredItems.length} selected`}
+                <span className="w-[30%] text-small text-muted">
+                    {filteredItems.length} {filteredItems.length === 1 ? "user" : "users"}
                 </span>
-                <Pagination
-                    isCompact
-                    showControls
-                    showShadow
-                    color="primary"
-                    page={page}
-                    total={pages}
-                    onChange={setPage}
-                />
+                <PageNav page={page} total={pages} onChange={setPage} size="sm" />
                 <div className="hidden sm:flex w-[30%] justify-end gap-2">
-                    <Button isDisabled={pages === 1} size="sm" variant="flat" onPress={onPreviousPage}>
+                    <Button variant="secondary" isDisabled={pages === 1} size="sm" onPress={onPreviousPage}>
                         Previous
                     </Button>
-                    <Button isDisabled={pages === 1} size="sm" variant="flat" onPress={onNextPage}>
+                    <Button variant="secondary" isDisabled={pages === 1} size="sm" onPress={onNextPage}>
                         Next
                     </Button>
                 </div>
             </div>
         );
-    }, [selectedKeys, filteredItems.length, page, pages, onPreviousPage, onNextPage]);
+    }, [filteredItems.length, page, pages, onPreviousPage, onNextPage]);
 
     if (loading) {
         return (
@@ -649,49 +634,52 @@ export default function Users() {
 
     return (
         <>
-            <Table
-                isHeaderSticky
-                aria-label="Admin users table with delete functionality"
-                bottomContent={bottomContent}
-                bottomContentPlacement="outside"
-                classNames={{
-                    wrapper: "max-h-[382px]",
-                }}
-                selectedKeys={selectedKeys}
-                selectionMode="multiple"
-                sortDescriptor={sortDescriptor}
-                topContent={topContent}
-                topContentPlacement="outside"
-                onSelectionChange={setSelectedKeys}
-                onSortChange={setSortDescriptor}
-            >
-                <TableHeader columns={headerColumns}>
-                    {(column) => (
-                        <TableColumn
-                            key={column.uid}
-                            align={column.uid === "actions" ? "center" : "start"}
-                            allowsSorting={column.sortable}
+            <div className="flex flex-col gap-4">
+                {topContent}
+                <Table>
+                    <Table.ScrollContainer className="max-h-[382px]">
+                        <Table.Content
+                            aria-label="Admin users table"
+                            sortDescriptor={sortDescriptor}
+                            onSortChange={setSortDescriptor}
                         >
-                            {column.name}
-                        </TableColumn>
-                    )}
-                </TableHeader>
-                <TableBody emptyContent={"No users found"} items={sortedItems}>
-                    {(item) => (
-                        <TableRow key={item.id}>
-                            {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
+                            <Table.Header columns={headerColumns}>
+                                {(column) => (
+                                    <Table.Column
+                                        id={column.uid}
+                                        isRowHeader={column.uid === "fullName"}
+                                        allowsSorting={column.sortable}
+                                        className={column.uid === "actions" ? "text-center" : undefined}
+                                    >
+                                        {({ sortDirection }) => column.sortable ? (
+                                            <Table.SortableColumnHeader sortDirection={sortDirection}>{column.name}</Table.SortableColumnHeader>
+                                        ) : column.name}
+                                    </Table.Column>
+                                )}
+                            </Table.Header>
+                            <Table.Body items={pageItems} renderEmptyState={() => "No users found"}>
+                                {(item) => (
+                                    <Table.Row id={item.id}>
+                                        <Table.Collection items={headerColumns}>
+                                            {(column) => <Table.Cell>{renderCell(item, column.uid)}</Table.Cell>}
+                                        </Table.Collection>
+                                    </Table.Row>
+                                )}
+                            </Table.Body>
+                        </Table.Content>
+                    </Table.ScrollContainer>
+                </Table>
+                {bottomContent}
+            </div>
 
             {/* Delete Confirmation Modal */}
-            <Modal isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)}>
-                <ModalContent>
-                    <ModalHeader>
+            <Modal.Backdrop isOpen={deleteModalOpen} onOpenChange={(open) => { if (!open) setDeleteModalOpen(false); }}>
+              <Modal.Container size="md">
+                <Modal.Dialog>
+                    <Modal.Header>
                         <h3 className="text-lg font-semibold text-danger">Confirm Delete User</h3>
-                    </ModalHeader>
-                    <ModalBody>
+                    </Modal.Header>
+                    <Modal.Body>
                         {userToDelete && (
                             <div className="space-y-4">
                                 <p>Are you sure you want to delete this user? This action cannot be undone.</p>
@@ -717,7 +705,7 @@ export default function Users() {
                                                 className="ml-2"
                                                 color={roleColorMap[userToDelete.role] || "default"}
                                                 size="sm"
-                                                variant="flat"
+                                                variant="soft"
                                             >
                                                 {userToDelete.role}
                                             </Chip>
@@ -726,31 +714,29 @@ export default function Users() {
                                 </div>
                             </div>
                         )}
-                    </ModalBody>
-                    <ModalFooter>
+                    </Modal.Body>
+                    <Modal.Footer>
                         <Button
-                            variant="light"
+                            variant="ghost"
                             onPress={() => setDeleteModalOpen(false)}
                             isDisabled={isDeleting}
                         >
                             Cancel
                         </Button>
                         <Button
-                            color="danger"
+                            variant="danger"
                             onPress={handleDeleteUser}
-                            isLoading={isDeleting}
-                            startContent={!isDeleting ? <Trash2 className="w-4 h-4" /> : null}
-                        >
+                            isPending={isDeleting}
+                        >{!isDeleting ? <Trash2 className="w-4 h-4" /> : null}
                             {isDeleting ? "Deleting..." : "Delete User"}
                         </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
+                    </Modal.Footer>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
 
             {/* Add User Modal */}
-            <Modal
-                isOpen={addUserModalOpen}
-                onClose={() => {
+            <Modal.Backdrop isOpen={addUserModalOpen} onOpenChange={(open) => { if (!open) (() => {
                     setAddUserModalOpen(false);
                     setNewUserForm({
                         fullName: '',
@@ -759,29 +745,27 @@ export default function Users() {
                         confirmPassword: ''
                     });
                     setFormErrors({});
-                }}
-                size="md"
-            >
-                <ModalContent>
-                    <ModalHeader>
-                        <h3 className="text-lg font-semibold text-primary">Add New Admin User</h3>
-                    </ModalHeader>
-                    <ModalBody>
+                })(); }}>
+              <Modal.Container size="md">
+                <Modal.Dialog>
+                    <Modal.Header>
+                        <h3 className="text-lg font-semibold text-accent">Add New Admin User</h3>
+                    </Modal.Header>
+                    <Modal.Body>
                         <div className="space-y-4">
                             <div>
-                                <Input
+                                <FormInput
                                     label="Full Name"
                                     placeholder="Enter full name"
                                     value={newUserForm.fullName}
                                     onValueChange={(value) => handleFormChange('fullName', value)}
                                     isInvalid={!!formErrors.fullName}
                                     errorMessage={formErrors.fullName}
-                                    variant="bordered"
                                 />
                             </div>
 
                             <div>
-                                <Input
+                                <FormInput
                                     label="Email"
                                     placeholder="Enter email address"
                                     type="email"
@@ -789,12 +773,11 @@ export default function Users() {
                                     onValueChange={(value) => handleFormChange('email', value)}
                                     isInvalid={!!formErrors.email}
                                     errorMessage={formErrors.email}
-                                    variant="bordered"
                                 />
                             </div>
 
                             <div>
-                                <Input
+                                <FormInput
                                     label="Password"
                                     placeholder="Enter password"
                                     type="password"
@@ -802,12 +785,11 @@ export default function Users() {
                                     onValueChange={(value) => handleFormChange('password', value)}
                                     isInvalid={!!formErrors.password}
                                     errorMessage={formErrors.password}
-                                    variant="bordered"
                                 />
                             </div>
 
                             <div>
-                                <Input
+                                <FormInput
                                     label="Confirm Password"
                                     placeholder="Confirm password"
                                     type="password"
@@ -815,7 +797,6 @@ export default function Users() {
                                     onValueChange={(value) => handleFormChange('confirmPassword', value)}
                                     isInvalid={!!formErrors.confirmPassword}
                                     errorMessage={formErrors.confirmPassword}
-                                    variant="bordered"
                                 />
                             </div>
 
@@ -825,10 +806,10 @@ export default function Users() {
                                 </p>
                             </div>
                         </div>
-                    </ModalBody>
-                    <ModalFooter>
+                    </Modal.Body>
+                    <Modal.Footer>
                         <Button
-                            variant="light"
+                            variant="ghost"
                             onPress={() => {
                                 setAddUserModalOpen(false);
                                 setNewUserForm({
@@ -844,21 +825,19 @@ export default function Users() {
                             Cancel
                         </Button>
                         <Button
-                            color="primary"
+                            variant="primary"
                             onPress={handleAddUser}
-                            isLoading={isCreatingUser}
-                            startContent={!isCreatingUser ? <Plus className="w-4 h-4" /> : null}
-                        >
+                            isPending={isCreatingUser}
+                        >{!isCreatingUser ? <Plus className="w-4 h-4" /> : null}
                             {isCreatingUser ? "Creating..." : "Create Admin User"}
                         </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
+                    </Modal.Footer>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
 
             {/* Edit User Modal */}
-            <Modal
-                isOpen={editUserModalOpen}
-                onClose={() => {
+            <Modal.Backdrop isOpen={editUserModalOpen} onOpenChange={(open) => { if (!open) (() => {
                     setEditUserModalOpen(false);
                     setEditUserForm({
                         fullName: '',
@@ -867,29 +846,27 @@ export default function Users() {
                     });
                     setEditFormErrors({});
                     setUserToEdit(null);
-                }}
-                size="md"
-            >
-                <ModalContent>
-                    <ModalHeader>
+                })(); }}>
+              <Modal.Container size="md">
+                <Modal.Dialog>
+                    <Modal.Header>
                         <h3 className="text-lg font-semibold text-warning">Edit User</h3>
-                    </ModalHeader>
-                    <ModalBody>
+                    </Modal.Header>
+                    <Modal.Body>
                         <div className="space-y-4">
                             <div>
-                                <Input
+                                <FormInput
                                     label="Full Name"
                                     placeholder="Enter full name"
                                     value={editUserForm.fullName}
                                     onValueChange={(value) => handleEditFormChange('fullName', value)}
                                     isInvalid={!!editFormErrors.fullName}
                                     errorMessage={editFormErrors.fullName}
-                                    variant="bordered"
                                 />
                             </div>
 
                             <div>
-                                <Input
+                                <FormInput
                                     label="Email"
                                     placeholder="Enter email address"
                                     type="email"
@@ -897,29 +874,22 @@ export default function Users() {
                                     onValueChange={(value) => handleEditFormChange('email', value)}
                                     isInvalid={!!editFormErrors.email}
                                     errorMessage={editFormErrors.email}
-                                    variant="bordered"
                                 />
                             </div>
 
                             <div>
-                                <Select
-                                    label="Role"
-                                    placeholder="Select user role"
-                                    selectedKeys={editUserForm.role ? [editUserForm.role] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect
+                                  label="Role"
+                                  placeholder="Select user role"
+                                  value={editUserForm.role ? editUserForm.role as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         handleEditFormChange('role', selectedKey);
                                     }}
-                                    isInvalid={!!editFormErrors.role}
-                                    errorMessage={editFormErrors.role}
-                                    variant="bordered"
-                                >
-                                    {roleOptions.map((role) => (
-                                        <SelectItem key={role.uid}>
-                                            {role.name}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                  isInvalid={!!editFormErrors.role}
+                                  errorMessage={editFormErrors.role}
+                                  options={roleOptions.map((role) => ({ value: String(role.uid), label: role.name }))}
+                                />
                             </div>
 
                             {userToEdit && (
@@ -933,10 +903,10 @@ export default function Users() {
                                 </div>
                             )}
                         </div>
-                    </ModalBody>
-                    <ModalFooter>
+                    </Modal.Body>
+                    <Modal.Footer>
                         <Button
-                            variant="light"
+                            variant="ghost"
                             onPress={() => {
                                 setEditUserModalOpen(false);
                                 setEditUserForm({
@@ -952,15 +922,16 @@ export default function Users() {
                             Cancel
                         </Button>
                         <Button
-                            color="warning"
+                            variant="primary"
                             onPress={handleEditUser}
-                            isLoading={isUpdatingUser}
+                            isPending={isUpdatingUser}
                         >
                             {isUpdatingUser ? "Updating..." : "Update User"}
                         </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
+                    </Modal.Footer>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
         </>
     );
 }

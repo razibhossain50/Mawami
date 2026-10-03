@@ -5,7 +5,7 @@ import {
   User, Heart, GraduationCap, Briefcase, MapPin, Users, Phone, Mail, Calendar, Ruler, Weight, Droplets, Shield,
   Home, AlertCircle, RefreshCw, Star, Share2, MessageCircle, Sparkles, Edit, Plus, ArrowLeft, Search, Lock
 } from "lucide-react";
-import { Card, CardBody, CardHeader, Button, Chip, addToast } from "@heroui/react";
+import { Card, Button, Chip } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -273,11 +273,11 @@ export default function Profile() {
               </div>
             </div>
             <div className="mt-6 space-x-4">
-              <Button onClick={handleRetry} variant="flat" className="flex items-center gap-2">
+              <Button variant="secondary" onPress={handleRetry} className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Retry
               </Button>
-              <Button variant="flat">
+              <Button variant="secondary">
                 <Link href="/profile/biodatas">
                   Back to All Profiles
                 </Link>
@@ -326,7 +326,7 @@ export default function Profile() {
             </div>
 
             {/* Content Section */}
-            <CardBody className="p-8">
+            <Card.Content className="p-8">
               <div className="text-center space-y-6">
                 <div className="max-w-2xl mx-auto">
                   <h3 className="text-xl font-semibold text-gray-800 mb-4">
@@ -362,7 +362,6 @@ export default function Profile() {
                   <Button
                     size="lg"
                     className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-8 py-3 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-
                   >
                     <Link className="flex items-center" href="/profile/biodatas/edit/new">
                       <Plus className="h-5 w-5 mr-2" />
@@ -371,12 +370,12 @@ export default function Profile() {
                   </Button>
 
                   <div className="flex justify-center gap-4">
-                    <Button variant="flat" >
+                    <Button variant="secondary">
                       <Link href="/profile/biodatas">
                         Browse All Profiles
                       </Link>
                     </Button>
-                    <Button variant="flat" >
+                    <Button variant="secondary">
                       <Link href="/dashboard">
                         Go to Dashboard
                       </Link>
@@ -392,7 +391,7 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       </div>
@@ -405,7 +404,7 @@ export default function Profile() {
         {/* Back to Search Button */}
         <div className="flex justify-center">
           <Button
-            variant="solid"
+            variant="primary"
             size="lg"
             className="flex items-center gap-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             onPress={handleBackToSearch}
@@ -433,7 +432,7 @@ export default function Profile() {
                 {canEditProfile && (
                   <Chip
                     size="sm"
-                    variant="flat"
+                    variant="soft"
                     className={`capitalize ${profile.biodataApprovalStatus === 'approved'
                       ? 'bg-green-100 text-green-800 border-green-200'
                       : profile.biodataApprovalStatus === 'pending'
@@ -455,10 +454,9 @@ export default function Profile() {
 
             {canEditProfile && (
               <Button
-                variant="solid"
+                variant="primary"
                 size="sm"
                 className="flex items-center gap-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-all duration-200 hover:shadow-md"
-
               >
                 <Link className="flex gap-3" href={`/profile/biodatas/edit/${biodataId}`}>
                   <Edit className="h-4 w-4" />
@@ -467,21 +465,21 @@ export default function Profile() {
               </Button>
             )}
             <Button
-              variant="solid"
+              variant="primary"
               size="sm"
               className={`flex items-center gap-2 transition-all duration-200 hover:shadow-md ${isFavoriteProfile
                 ? 'bg-rose-500 text-white hover:bg-rose-600'
                 : 'border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700'
                 }`}
               onPress={handleFavoriteToggle}
-              isLoading={favoriteLoading}
-              disabled={favoriteLoading}
+              isPending={favoriteLoading}
+              isDisabled={favoriteLoading}
             >
               <Heart className={`h-4 w-4 ${isFavoriteProfile ? 'fill-current' : ''}`} />
               {isFavoriteProfile ? 'Remove from Favorites' : 'Add to Favorites'}
             </Button>
             <Button
-              variant="solid"
+              variant="primary"
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 transition-all duration-300 hover:shadow-xl hover:scale-110 font-bold px-6 py-2 shadow-lg rounded-full"
               onPress={handleShareClick}
@@ -490,7 +488,7 @@ export default function Profile() {
               Share
             </Button>
             <Button
-              variant="bordered"
+              variant="outline"
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white border-0 transition-all duration-200 hover:shadow-lg hover:scale-105"
               onPress={handleContactClick}
@@ -515,7 +513,7 @@ export default function Profile() {
             <Heart className="h-6 w-6 text-white animate-pulse delay-1000" />
           </div>
 
-          <CardBody className="relative p-4">
+          <Card.Content className="relative p-4">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Enhanced Profile Picture */}
               <div className="relative">
@@ -606,22 +604,22 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         {/* Enhanced Main Content Grid */}
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Personal Information */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500 rounded-lg group-hover:scale-110 transition-transform">
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Personal Information</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
@@ -679,22 +677,22 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
 
 
           {/* Education */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-500 rounded-lg group-hover:scale-110 transition-transform">
                   <GraduationCap className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Education Background</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
@@ -723,20 +721,20 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Professional Information */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Briefcase className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Professional Details</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
                   <p className="text-sm font-semibold text-gray-600 mb-1">Profession</p>
@@ -750,18 +748,18 @@ export default function Profile() {
                   <p className="text-base font-medium text-gray-800">{safeDisplay(profile.economicCondition)}</p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Home className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Permanent Address</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
                   <p className="text-sm font-semibold text-gray-600 mb-1">Area & Upazilla</p>
@@ -785,19 +783,19 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-teal-500 rounded-lg group-hover:scale-110 transition-transform">
                   <MapPin className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Present Address</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {profile.sameAsPermanent ? (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                   <Home className="h-8 w-8 text-blue-500 mx-auto mb-3" />
@@ -829,20 +827,20 @@ export default function Profile() {
                   </div>
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Enhanced Family Information */}
           <Card className="w-full bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Family Information</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Parents Information */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
@@ -932,19 +930,19 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
           {/* Enhanced Family Information */}
           <Card className="w-full bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Family Information</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Siblings & Family Details */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-100">
@@ -978,19 +976,19 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Heart className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Partner Preferences</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Basic Preferences */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg p-3 border border-rose-100">
@@ -1030,20 +1028,20 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Enhanced Partner Preferences */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Heart className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Partner Preferences</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Professional & Location Preferences */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
@@ -1082,11 +1080,11 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
           {/* Contact Information */}
           <Card id="contact-information" className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Phone className="h-5 w-5 text-white" />
@@ -1098,8 +1096,8 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {checkingUserBiodata ? (
                 // Loading state while checking if user has biodata
                 <div className="text-center py-6">
@@ -1197,7 +1195,7 @@ export default function Profile() {
                   </div>
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 
@@ -1212,7 +1210,7 @@ export default function Profile() {
             <Heart className="h-8 w-8 text-white animate-pulse delay-1000" />
           </div>
 
-          <CardBody className="relative p-4 text-center">
+          <Card.Content className="relative p-4 text-center">
             <div className="max-w-2xl mx-auto space-y-4">
               <div className="space-y-2">
                 <h3 className="text-2xl md:text-3xl font-bold">
@@ -1225,21 +1223,21 @@ export default function Profile() {
 
               <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
                 <Button
-                  variant="solid"
+                  variant="primary"
                   size="lg"
                   className={`font-semibold px-8 py-3 rounded-full transition-all duration-300 hover:shadow-xl group ${isFavoriteProfile
                     ? 'bg-white text-rose-600 hover:bg-rose-50'
                     : 'border-white text-rose-600 hover:bg-white hover:text-rose-600 hover:border-rose-600'
                     }`}
                   onPress={handleFavoriteToggle}
-                  isLoading={favoriteLoading}
-                  disabled={favoriteLoading}
+                  isPending={favoriteLoading}
+                  isDisabled={favoriteLoading}
                 >
                   <Heart className={`h-4 w-4 mr-2 group-hover:text-rose-600 transition-colors duration-300 ${isFavoriteProfile ? 'fill-current' : ''}`} />
                   {isFavoriteProfile ? 'Remove from Favorites' : 'Add to Favorites'}
                 </Button>
                 <Button
-                  variant="solid"
+                  variant="primary"
                   size="lg"
                   className="bg-white text-rose-600 hover:bg-rose-50 font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   onPress={handleContactClick}
@@ -1260,7 +1258,7 @@ export default function Profile() {
                 </span>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
 

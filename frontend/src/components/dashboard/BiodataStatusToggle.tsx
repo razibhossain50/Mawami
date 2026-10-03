@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardBody, Switch, Button, Chip, Spinner } from "@heroui/react";
+import { Card, Switch, Button, Chip, Spinner } from "@heroui/react";
 import { Eye, EyeOff, AlertCircle, Shield, RefreshCw } from "lucide-react";
 import { BiodataApprovalStatus, BiodataVisibilityStatus, BIODATA_STATUS_COLORS } from "@/types/biodata";
 import { logger } from '@/services/logger';
@@ -148,7 +148,7 @@ export const BiodataStatusToggle: React.FC<BiodataStatusToggleProps> = ({
 
   return (
     <Card className="w-full">
-      <CardBody className="p-6">
+      <Card.Content className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4 flex-1">
 
@@ -160,7 +160,7 @@ export const BiodataStatusToggle: React.FC<BiodataStatusToggleProps> = ({
                 <Chip
                   className={`${colors.text} ${colors.bg} border ${colors.border}`}
                   size="sm"
-                  variant="flat"
+                  variant="soft"
                 >
                   {biodataApprovalStatus}
                 </Chip>
@@ -206,13 +206,11 @@ export const BiodataStatusToggle: React.FC<BiodataStatusToggleProps> = ({
                 <div className="flex items-center gap-3">
                   {isToggling && <Spinner size="sm" />}
 
-                  <Switch
-                    isSelected={localVisibilityStatus === BiodataVisibilityStatus.ACTIVE}
-                    onValueChange={handleToggle}
-                    isDisabled={!canUserToggle || isToggling}
-                    color="success"
-                    size="sm"
-                  />
+                  <Switch isSelected={localVisibilityStatus === BiodataVisibilityStatus.ACTIVE} onChange={handleToggle} isDisabled={!canUserToggle || isToggling} size="sm" aria-label="Show my biodata to others">
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
                 </div>
               </div>
 
@@ -233,7 +231,7 @@ export const BiodataStatusToggle: React.FC<BiodataStatusToggleProps> = ({
             </div>
           </div>
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 };
