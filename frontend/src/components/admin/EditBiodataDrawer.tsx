@@ -10,6 +10,7 @@ import { LocationSelector } from '@/components/form/LocationSelector';
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
 import { adminApi } from '@/services/api-client';
+import { ageFromDob } from '@/services/utils';
 import { useToast } from '@/context/ToastContext';
 import { FileUploadResponse } from '@/types/api';
 import { ImageUploadWithCrop } from '@/components/common/ImageUploadWithCrop';
@@ -45,12 +46,13 @@ export default function EditBiodataDrawer({
     const [error, setError] = React.useState<string | null>(null);
     const [touchedFields, setTouchedFields] = React.useState<Set<string>>(new Set());
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = React.useState(false);
-    const [calculatedAge, setCalculatedAge] = React.useState<number | null>(null);
     const [isUploading, setIsUploading] = React.useState(false);
     const { addToast } = useToast();
 
-    // Initialize form data when selectedBiodata changes
-    React.useEffect(() => {
+    // Re-initialize the form when selectedBiodata changes (during render, not in an effect)
+    const [initializedFor, setInitializedFor] = React.useState<typeof selectedBiodata | undefined>(undefined);
+    if (initializedFor !== selectedBiodata) {
+        setInitializedFor(selectedBiodata);
         setTouchedFields(new Set());
         setHasAttemptedSubmit(false);
 
@@ -117,67 +119,12 @@ export default function EditBiodataDrawer({
                 biodataVisibilityStatus: 'active'
             });
         }
-    }, [selectedBiodata]);
+    }
 
     // Cleanup object URLs to prevent memory leaks
 
-    // Age calculation effect
-    React.useEffect(() => {
-        if (editFormData.dateOfBirth && typeof editFormData.dateOfBirth === 'string' && editFormData.dateOfBirth.trim() !== '') {
-            try {
-                const dob = new Date(editFormData.dateOfBirth);
-                const today = new Date();
-
-                // Check if the date is valid
-                if (isNaN(dob.getTime())) {
-                    console.log('❌ Invalid date format');
-                    setCalculatedAge(null);
-                    setEditFormData(prev => ({ ...prev, age: undefined }));
-                    return;
-                }
-
-                // Check if the date is in the future
-                if (dob > today) {
-                    console.log('❌ Date of birth cannot be in the future');
-                    setCalculatedAge(null);
-                    setEditFormData(prev => ({ ...prev, age: undefined }));
-                    return;
-                }
-
-                let age = today.getFullYear() - dob.getFullYear();
-                const monthDiff = today.getMonth() - dob.getMonth();
-
-                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-                    age--;
-                }
-
-                // Check for reasonable age range
-                if (age < 0 || age > 120) {
-                    console.log('❌ Age is outside reasonable range:', age);
-                    setCalculatedAge(null);
-                    setEditFormData(prev => ({ ...prev, age: undefined }));
-                    return;
-                }
-
-                setCalculatedAge(age);
-                // Update age in form data only if it's different and valid
-                if (editFormData.age !== age && age >= 0) {
-                    console.log(`📅 Age calculated from date of birth: ${age} years`);
-                    setEditFormData(prev => ({ ...prev, age }));
-                }
-            } catch (error) {
-                console.log('❌ Error parsing date:', error);
-                setCalculatedAge(null);
-                setEditFormData(prev => ({ ...prev, age: undefined }));
-            }
-        } else {
-            // Clear calculated age and form age when date of birth is empty
-            setCalculatedAge(null);
-            if (editFormData.age !== undefined) {
-                setEditFormData(prev => ({ ...prev, age: undefined }));
-            }
-        }
-    }, [editFormData.dateOfBirth]);
+    // Age is derived from the date of birth
+    const calculatedAge = ageFromDob(editFormData.dateOfBirth);
 
     // Handle save biodata (create or update)
     const handleSaveBiodata = async () => {
@@ -670,9 +617,9 @@ export default function EditBiodataDrawer({
                                         onChange={(date) => {
                                             if (date) {
                                                 const dateString = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-                                                setEditFormData(prev => ({ ...prev, dateOfBirth: dateString }));
+                                                setEditFormData(prev => ({ ...prev, dateOfBirth: dateString, age: ageFromDob(dateString) ?? undefined }));
                                             } else {
-                                                setEditFormData(prev => ({ ...prev, dateOfBirth: "" }));
+                                                setEditFormData(prev => ({ ...prev, dateOfBirth: "", age: undefined }));
                                             }
                                             markFieldAsTouched('dateOfBirth');
                                         }}

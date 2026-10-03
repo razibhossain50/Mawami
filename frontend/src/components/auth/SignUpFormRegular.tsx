@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -48,7 +48,7 @@ export default function SignupFormRegular() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isValid },
   } = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
@@ -61,9 +61,11 @@ export default function SignupFormRegular() {
     },
   });
 
-  const password = watch("password");
-  const fullName = watch("fullName");
-  const email = watch("email");
+  // useWatch subscribes properly (watch() can't be memoized by the React Compiler)
+  const [password, fullName, email, confirmPassword] = useWatch({
+    control,
+    name: ["password", "fullName", "email", "confirmPassword"],
+  });
 
 
 
@@ -232,7 +234,7 @@ export default function SignupFormRegular() {
                 startContent={<Lock className="w-4 h-4 text-gray-400" />}
                 endContent={
                   <>
-                    {watch("confirmPassword") && !errors.confirmPassword ? (
+                    {confirmPassword && !errors.confirmPassword ? (
                       <CheckCircle className="w-4 h-4 text-success-500" />
                     ) : null}
                     <button

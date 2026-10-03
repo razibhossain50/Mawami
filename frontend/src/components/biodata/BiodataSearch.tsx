@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
     Card, CardBody, CardHeader, Button, Select, SelectItem, Input, Chip,
@@ -41,110 +42,51 @@ interface Biodata {
 }
 
 export const BiodataSearch = () => {
-    const [biodatas, setBiodatas] = useState<Biodata[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedGender, setSelectedGender] = useState<string>("");
-    const [selectedMaritalStatus, setSelectedMaritalStatus] = useState<string>("");
-    const [selectedLocation, setSelectedLocation] = useState<string>("");
-    const [biodataNumber, setBiodataNumber] = useState<string>("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [hasSearched, setHasSearched] = useState(false);
-    const [favoriteStates, setFavoriteStates] = useState<{ [key: number]: boolean }>({});
-    const [favoriteLoading, setFavoriteLoading] = useState<{ [key: number]: boolean }>({});
-
-    // Add hooks for authentication and favorites
-    const { user, isAuthenticated } = useRegularAuth();
-    const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    // Search state is restored from the URL once, on first render
+    const [initialFilters] = useState(() => ({
+        gender: searchParams.get('gender') || "",
+        maritalStatus: searchParams.get('maritalStatus') || "",
+        location: searchParams.get('location') || "",
+        biodataNumber: searchParams.get('biodataNumber') || ""
+    }));
+    const restoredSearch = searchParams.get('searched') === 'true' || Object.values(initialFilters).some(Boolean);
+
+    const [selectedGender, setSelectedGender] = useState<string>(initialFilters.gender);
+    const [selectedMaritalStatus, setSelectedMaritalStatus] = useState<string>(initialFilters.maritalStatus);
+    const [selectedLocation, setSelectedLocation] = useState<string>(initialFilters.location);
+    const [biodataNumber, setBiodataNumber] = useState<string>(initialFilters.biodataNumber);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasSearched, setHasSearched] = useState(restoredSearch);
+    const [favoriteLoading, setFavoriteLoading] = useState<{ [key: number]: boolean }>({});
+
+    // The search filters that were used for the current results
+    const [searchFilters, setSearchFilters] = useState(initialFilters);
+
+    // Add hooks for authentication and favorites
+    const { user, isAuthenticated } = useRegularAuth();
+    // Favorite state comes from the shared, cached favorites list (no per-card requests)
+    const { addToFavorites, removeFromFavorites, favoriteIds } = useFavorites();
+
     const itemsPerPage = 12;
 
-    // Restore search state from URL parameters on component load
-    useEffect(() => {
-        const gender = searchParams.get('gender');
-        const maritalStatus = searchParams.get('maritalStatus');
-        const location = searchParams.get('location');
-        const biodataNumber = searchParams.get('biodataNumber');
-        const searched = searchParams.get('searched');
-
-        // Set form field values
-        if (gender) {
-            setSelectedGender(gender);
-        }
-        if (maritalStatus) {
-            setSelectedMaritalStatus(maritalStatus);
-        }
-        if (location) {
-            setSelectedLocation(location);
-        }
-        if (biodataNumber) {
-            setBiodataNumber(biodataNumber);
-        }
-        
-        // If we have search parameters, automatically perform the search
-        if (searched === 'true' || gender || maritalStatus || location || biodataNumber) {
-            setHasSearched(true);
-            
-            // Set search filters immediately
-            const filters = {
-                gender: gender || "",
-                maritalStatus: maritalStatus || "",
-                location: location || "",
-                biodataNumber: biodataNumber || ""
-            };
-            setSearchFilters(filters);
-            
-            // Trigger search with restored parameters
-            setTimeout(() => {
-                handleSearchFromParams(gender, maritalStatus, location, biodataNumber);
-            }, 200); // Slightly longer delay to ensure all state is set
-        }
-    }, [searchParams]);
-
-    // Handle search from URL parameters
-    const handleSearchFromParams = async (gender?: string | null, maritalStatus?: string | null, location?: string | null, biodataNumberParam?: string | null) => {
-        const filters = {
-            gender: gender || selectedGender || "",
-            maritalStatus: maritalStatus || selectedMaritalStatus || "",
-            location: location || selectedLocation || "",
-            biodataNumber: biodataNumberParam || biodataNumber || ""
-        };
-
-        setSearchFilters(filters);
-        await fetchBiodatas();
-    };
-
-    const fetchBiodatas = async () => {
-        try {
-            setLoading(true);
-            logger.debug('Fetching biodatas', undefined, 'BiodataSearch');
-
-            const data = await publicApi.get('/biodatas');
-
-            // Handle both single object and array responses
-            const biodatasArray = Array.isArray(data) ? data : [data];
-            setBiodatas(biodatasArray);
-            setError(null);
-
-            logger.info('Successfully fetched biodatas', { count: biodatasArray.length }, 'BiodataSearch');
-        } catch (error) {
-            const appError = handleApiError(error, 'BiodataSearch');
-            logger.error('Failed to fetch biodatas', appError, 'BiodataSearch');
-            setError(appError.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Store the search filters that were used for the current results
-    const [searchFilters, setSearchFilters] = useState({
-        gender: "",
-        maritalStatus: "",
-        location: "",
-        biodataNumber: ""
+    // All public biodatas, fetched once a search has been run (including one restored from the URL)
+    const {
+        data: biodatas = [],
+        isFetching: loading,
+        error: fetchError,
+        refetch,
+    } = useQuery({
+        queryKey: ['public-biodatas'],
+        enabled: hasSearched,
+        queryFn: async (): Promise<Biodata[]> => {
+            const data = await publicApi.get<Biodata[] | Biodata>('/biodatas');
+            return Array.isArray(data) ? data : [data];
+        },
     });
+    const error = fetchError instanceof Error ? fetchError.message : null;
 
     // Filter and search logic - only filters when search has been performed
     const filteredBiodatas = useMemo(() => {
@@ -293,7 +235,7 @@ export const BiodataSearch = () => {
 
             // Biodata number filter - use the search filters, not current form state
             const matchesBiodataNumber = !searchFilters.biodataNumber || searchFilters.biodataNumber === '' ||
-                biodata.id.toString().includes(searchFilters.biodataNumber);
+                biodata.id.toString() === searchFilters.biodataNumber.trim().replace(/^BD/i, '');
 
             const finalMatch = matchesGender && matchesMaritalStatus && matchesLocation && matchesBiodataNumber;
 
@@ -323,42 +265,6 @@ export const BiodataSearch = () => {
     const endIndex = startIndex + itemsPerPage;
     const currentBiodatas = filteredBiodatas.slice(startIndex, endIndex);
 
-    // Track which biodatas we've already checked to prevent duplicate API calls
-    const checkedBiodatasRef = useRef<Set<number>>(new Set());
-
-    // Check favorite status for each biodata when they load
-    useEffect(() => {
-        const checkFavoriteStatuses = async () => {
-            if (!isAuthenticated || !user || currentBiodatas.length === 0) return;
-
-            // Filter out biodatas we've already checked
-            const uncheckedBiodatas = currentBiodatas.filter(biodata =>
-                !checkedBiodatasRef.current.has(biodata.id)
-            );
-
-            if (uncheckedBiodatas.length === 0) {
-                return;
-            }
-            const statuses: { [key: number]: boolean } = {};
-
-            for (const biodata of uncheckedBiodatas) {
-                try {
-                    const status = await isFavorite(biodata.id);
-                    statuses[biodata.id] = status;
-                    checkedBiodatasRef.current.add(biodata.id);
-                } catch (error) {
-                    const appError = handleApiError(error, 'BiodataSearch');
-                    logger.error(`Error checking favorite status for biodata ${biodata.id}`, appError, 'BiodataSearch');
-                    statuses[biodata.id] = false;
-                    checkedBiodatasRef.current.add(biodata.id);
-                }
-            }
-
-            setFavoriteStates(prev => ({ ...prev, ...statuses }));
-        };
-
-        checkFavoriteStatuses();
-    }, [currentBiodatas, isAuthenticated, user]);
 
     // Handle favorite toggle with backend integration
     const handleFavoriteToggle = async (biodataId: number) => {
@@ -369,19 +275,10 @@ export const BiodataSearch = () => {
 
         try {
             setFavoriteLoading(prev => ({ ...prev, [biodataId]: true }));
-
-            const isCurrentlyFavorite = favoriteStates[biodataId] || false;
-
-            if (isCurrentlyFavorite) {
-                const success = await removeFromFavorites(biodataId);
-                if (success) {
-                    setFavoriteStates(prev => ({ ...prev, [biodataId]: false }));
-                }
+            if (favoriteIds.has(biodataId)) {
+                await removeFromFavorites(biodataId);
             } else {
-                const success = await addToFavorites(biodataId);
-                if (success) {
-                    setFavoriteStates(prev => ({ ...prev, [biodataId]: true }));
-                }
+                await addToFavorites(biodataId);
             }
         } catch (error) {
             const appError = handleApiError(error, 'BiodataSearch');
@@ -391,21 +288,12 @@ export const BiodataSearch = () => {
         }
     };
 
-    // Reset pagination when filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [filteredBiodatas]);
-
     const handleSearch = async () => {
         // Prevent multiple simultaneous searches
         if (loading) {
             logger.debug('Search already in progress, ignoring duplicate request', undefined, 'BiodataSearch');
             return;
         }
-
-        // Clear previous favorite checks when doing a new search
-        checkedBiodatasRef.current.clear();
-        setFavoriteStates({});
 
         // Capture current form values as search filters
         const filters = {
@@ -428,6 +316,7 @@ export const BiodataSearch = () => {
 
         setSearchFilters(filters);
         setHasSearched(true);
+        setCurrentPage(1);
         
         // Update URL with search parameters
         const searchParams = new URLSearchParams();
@@ -462,7 +351,10 @@ export const BiodataSearch = () => {
             logger.warn('Failed to save search state to sessionStorage', error as any, 'BiodataSearch');
         }
         
-        await fetchBiodatas();
+        // First search enables the query; later searches refresh the list
+        if (hasSearched) {
+            await refetch();
+        }
     };
 
 
@@ -665,11 +557,11 @@ export const BiodataSearch = () => {
                                             onPress={() => handleFavoriteToggle(biodata.id)}
                                             isLoading={favoriteLoading[biodata.id]}
                                             disabled={favoriteLoading[biodata.id]}
-                                            className={`${favoriteStates[biodata.id] ? "bg-white/90" : "bg-white/90 text-gray-400 hover:text-red-500"} transition-all duration-200`}
-                                            aria-label={favoriteStates[biodata.id] ? `Remove ${biodata.fullName} from favorites` : `Add ${biodata.fullName} to favorites`}
+                                            className={`${favoriteIds.has(biodata.id) ? "bg-white/90" : "bg-white/90 text-gray-400 hover:text-red-500"} transition-all duration-200`}
+                                            aria-label={favoriteIds.has(biodata.id) ? `Remove ${biodata.fullName} from favorites` : `Add ${biodata.fullName} to favorites`}
                                         >
                                             <Heart
-                                                className={`h-4 w-4 ${favoriteStates[biodata.id] ? "fill-rose-500 stroke-rose-500" : ""} group-hover:scale-110 transition-transform`}
+                                                className={`h-4 w-4 ${favoriteIds.has(biodata.id) ? "fill-rose-500 stroke-rose-500" : ""} group-hover:scale-110 transition-transform`}
                                             />
                                         </Button>
                                     </div>
@@ -807,7 +699,7 @@ export const BiodataSearch = () => {
                                             <Button
                                                 variant="flat"
                                                 className="bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
-                                                onPress={fetchBiodatas}
+                                                onPress={() => void refetch()}
                                                 startContent={<Sparkles className="h-4 w-4" />}
                                             >
                                                 Refresh Profiles

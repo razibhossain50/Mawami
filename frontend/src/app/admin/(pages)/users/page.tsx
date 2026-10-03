@@ -2,6 +2,7 @@
 import type { SVGProps } from "react";
 import type { Selection, ChipProps, SortDescriptor } from "@heroui/react";
 import React from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
     Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, DropdownTrigger,
     Dropdown, DropdownMenu, DropdownItem, Chip, User, Pagination, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem
@@ -82,7 +83,8 @@ export default function Users() {
     // Add user modal state
     const [addUserModalOpen, setAddUserModalOpen] = React.useState(false);
     const [isCreatingUser, setIsCreatingUser] = React.useState(false);
-    const [currentUser, setCurrentUser] = React.useState<DatabaseUser | null>(null);
+    // Signed-in admin, from the admin auth context
+    const { user: currentUser } = useAuth();
 
     // Add user form state
     const [newUserForm, setNewUserForm] = React.useState({
@@ -106,29 +108,6 @@ export default function Users() {
     });
     const [editFormErrors, setEditFormErrors] = React.useState<Record<string, string>>({});
 
-    // Get current user from localStorage
-    React.useEffect(() => {
-        const userData = localStorage.getItem('user');
-        const regularUserData = localStorage.getItem('regular_user');
-
-        if (userData) {
-            try {
-                const user = JSON.parse(userData);
-                setCurrentUser(user);
-            } catch (error) {
-                const appError = handleApiError(error, 'AdminUsersPage');
-                logger.error('Failed to parse user data', appError, 'AdminUsersPage');
-            }
-        } else if (regularUserData) {
-            try {
-                const user = JSON.parse(regularUserData);
-                setCurrentUser(user);
-            } catch (error) {
-                const appError = handleApiError(error, 'AdminUsersPage');
-                logger.error('Failed to parse regular user data', appError, 'AdminUsersPage');
-            }
-        }
-    }, []);
 
     // Fetch all users from API
     React.useEffect(() => {

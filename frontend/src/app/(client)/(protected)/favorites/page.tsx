@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
+import { useFavorites } from "@/hooks/useFavorites";
 import Link from "next/link";
 import {
     Card, CardBody, CardHeader, Button, Chip, Avatar, Divider, Input, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Tooltip
@@ -8,7 +9,6 @@ import { Heart, Eye, Star, Search, Sparkles, User, ArrowLeft, Filter, Copy, Tras
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
-import { userApi } from '@/services/api-client';
 import { getImageUrl } from '@/services/image-service';
 
 interface Biodata {
@@ -32,91 +32,40 @@ interface Biodata {
 }
 
 // API response types
-interface FavoriteApiResponse {
-    biodata: {
-        id: number;
-        fullName?: string;
-        profilePicture?: string;
-        age?: number;
-        biodataType?: string;
-        profession?: string;
-        presentCountry?: string;
-        presentDivision?: string;
-        presentZilla?: string;
-        presentArea?: string;
-        maritalStatus?: string;
-        height?: string;
-        complexion?: string;
-        religion?: string;
-        educationMedium?: string;
-        highestEducation?: string;
-    };
-    createdAt: string;
-}
-
 export default function FavoritesPage() {
     const { user, isAuthenticated } = useRegularAuth();
-    const [favorites, setFavorites] = useState<Biodata[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // Shared, cached favorites list (same data the search and profile pages use)
+    const { favorites: favoriteItems, loading, error: favoritesError, removeFromFavorites } = useFavorites();
+    const error = favoritesError ? 'Failed to load your favorite profiles' : null;
 
-    // Fetch favorites from API
-    useEffect(() => {
-        const fetchFavorites = async () => {
-            if (!isAuthenticated || !user) {
-                setLoading(false);
-                return;
-            }
-
-            try {
-                setLoading(true);
-                setError(null);
-
-                const data = await userApi.get('/favorites') as { data: FavoriteApiResponse[] };
-                const favoritesData = data.data || [];
-
-                // Transform the API response to match our interface
-                const transformedFavorites: Biodata[] = favoritesData.map((fav: FavoriteApiResponse) => ({
-                    id: fav.biodata.id,
-                    fullName: fav.biodata.fullName || "Unknown User",
-                    profilePicture: fav.biodata.profilePicture,
-                    age: fav.biodata.age || 0,
-                    biodataType: fav.biodata.biodataType || "Unknown",
-                    profession: fav.biodata.profession || "Unknown",
-                    presentDivision: fav.biodata.presentDivision,
-                    presentZilla: fav.biodata.presentZilla,
-                    presentCountry: fav.biodata.presentCountry,
-                    presentArea: fav.biodata.presentArea,
-                    maritalStatus: fav.biodata.maritalStatus || "Unknown",
-                    height: fav.biodata.height || "Unknown",
-                    complexion: fav.biodata.complexion,
-                    religion: fav.biodata.religion,
-                    educationMedium: fav.biodata.educationMedium,
-                    highestEducation: fav.biodata.highestEducation,
-                    dateAdded: fav.createdAt
-                }));
-
-                setFavorites(transformedFavorites);
-            } catch (error) {
-                const appError = handleApiError(error, 'FavoritesPage');
-                logger.error('Error fetching favorites', appError, 'FavoritesPage');
-                setError('Failed to load your favorite profiles');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchFavorites();
-    }, [isAuthenticated, user]);
+    // Shape the API items for the cards below
+    const favorites: Biodata[] = useMemo(() => {
+        return favoriteItems.map((fav) => ({
+            id: fav.biodata.id,
+            fullName: fav.biodata.fullName || "Unknown User",
+            profilePicture: fav.biodata.profilePicture ?? undefined,
+            age: fav.biodata.age || 0,
+            biodataType: fav.biodata.biodataType || "Unknown",
+            profession: fav.biodata.profession || "Unknown",
+            presentDivision: fav.biodata.presentDivision,
+            presentZilla: fav.biodata.presentZilla,
+            presentCountry: fav.biodata.presentCountry,
+            presentArea: fav.biodata.presentArea,
+            maritalStatus: fav.biodata.maritalStatus || "Unknown",
+            height: fav.biodata.height || "Unknown",
+            complexion: fav.biodata.complexion,
+            religion: fav.biodata.religion,
+            educationMedium: fav.biodata.educationMedium,
+            highestEducation: fav.biodata.highestEducation,
+            dateAdded: fav.createdAt
+        }));
+    }, [favoriteItems]);
 
     const removeFavorite = async (id: number) => {
         if (!isAuthenticated || !user) return;
 
         try {
-            await userApi.delete(`/favorites/${id}`);
-
-            // Update local state immediately
-            setFavorites(prev => prev.filter(fav => fav.id !== id));
+            await removeFromFavorites(id);
         } catch (error) {
             const appError = handleApiError(error, 'FavoritesPage');
             logger.error('Error removing from favorites', appError, 'FavoritesPage');

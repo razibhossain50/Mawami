@@ -1,7 +1,8 @@
 'use client';
 import { Input, Select, SelectItem, Textarea, Checkbox, Card, CardBody, CardHeader, DatePicker } from "@heroui/react";
 import { LocationSelector } from "@/components/form/LocationSelector";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { ageFromDob } from "@/services/utils";
 import { parseDate, CalendarDate, DateValue } from "@internationalized/date";
 
 interface PersonalInfoStepProps {
@@ -11,7 +12,6 @@ interface PersonalInfoStepProps {
 }
 
 export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepProps) {
-  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
 
   // Height options array
   const heightOptions = [
@@ -74,62 +74,14 @@ export function PersonalInfoStep({ data, errors, updateData }: PersonalInfoStepP
     updateData({ [field]: value });
   };
 
+  // Age is derived from the date of birth; keep the form's `age` field in sync with it
+  const calculatedAge = ageFromDob(data.dateOfBirth);
   useEffect(() => {
-    if (data.dateOfBirth && typeof data.dateOfBirth === 'string' && data.dateOfBirth.trim() !== '') {
-      try {
-        const dob = new Date(data.dateOfBirth);
-        const today = new Date();
-
-        // Check if the date is valid
-        if (isNaN(dob.getTime())) {
-          console.log('❌ Invalid date format');
-          setCalculatedAge(null);
-          updateData({ age: undefined });
-          return;
-        }
-
-        // Check if the date is in the future
-        if (dob > today) {
-          console.log('❌ Date of birth cannot be in the future');
-          setCalculatedAge(null);
-          updateData({ age: undefined });
-          return;
-        }
-
-        let age = today.getFullYear() - dob.getFullYear();
-        const monthDiff = today.getMonth() - dob.getMonth();
-
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-          age--;
-        }
-
-        // Check for reasonable age range
-        if (age < 0 || age > 120) {
-          console.log('❌ Age is outside reasonable range:', age);
-          setCalculatedAge(null);
-          updateData({ age: undefined });
-          return;
-        }
-
-        setCalculatedAge(age);
-        // Update age in form data only if it's different and valid
-        if (data.age !== age && age >= 0) {
-          console.log(`📅 Age calculated from date of birth: ${age} years`);
-          updateData({ age });
-        }
-      } catch (error) {
-        console.log('❌ Error parsing date:', error);
-        setCalculatedAge(null);
-        updateData({ age: undefined });
-      }
-    } else {
-      // Clear calculated age and form age when date of birth is empty
-      setCalculatedAge(null);
-      if (data.age !== undefined) {
-        updateData({ age: undefined });
-      }
+    const age = calculatedAge ?? undefined;
+    if (data.age !== age) {
+      updateData({ age });
     }
-  }, [data.dateOfBirth]); // Removed updateData from dependencies to prevent infinite loops
+  }, [calculatedAge]); // updateData is intentionally omitted: it changes identity on every parent render
 
   // Check if permanent address fields are complete
   const isPermanentAddressComplete = () => {

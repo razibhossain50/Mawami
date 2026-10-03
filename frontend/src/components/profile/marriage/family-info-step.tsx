@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+
 import { Input, Select, SelectItem, Textarea, Card, CardBody, CardHeader } from "@heroui/react";
 
 interface FamilyInfoStepProps {
@@ -9,15 +9,9 @@ interface FamilyInfoStepProps {
 }
 
 export function FamilyInfoStep({ data, errors, updateData }: FamilyInfoStepProps) {
-  // Local state for select values
-  const [localBrothersCount, setLocalBrothersCount] = useState<string>('');
-  const [localSistersCount, setLocalSistersCount] = useState<string>('');
-
-  // Sync local state with parent data
-  useEffect(() => {
-    setLocalBrothersCount(data.brothersCount !== undefined ? String(data.brothersCount) : '');
-    setLocalSistersCount(data.sistersCount !== undefined ? String(data.sistersCount) : '');
-  }, [data.brothersCount, data.sistersCount]);
+  // Select values come straight from the form data
+  const brothersCount = data.brothersCount !== undefined && data.brothersCount !== null ? String(data.brothersCount) : '';
+  const sistersCount = data.sistersCount !== undefined && data.sistersCount !== null ? String(data.sistersCount) : '';
 
   const handleSelectionChange = (selection: any, field: string) => {
     let value: string | undefined;
@@ -33,13 +27,10 @@ export function FamilyInfoStep({ data, errors, updateData }: FamilyInfoStepProps
       value = selection.length > 0 ? selection[0] : undefined;
     }
 
-    console.log(`🔄 Family info selection changed for ${field}:`, { selection, value });
 
     if (field === 'brothersCount') {
-      setLocalBrothersCount(value || '');
       updateData({ brothersCount: value ? parseInt(value, 10) : undefined });
     } else if (field === 'sistersCount') {
-      setLocalSistersCount(value || '');
       updateData({ sistersCount: value ? parseInt(value, 10) : undefined });
     } else {
       updateData({ [field]: value });
@@ -167,7 +158,7 @@ export function FamilyInfoStep({ data, errors, updateData }: FamilyInfoStepProps
           <Select
             label="How many brothers do you have?"
             placeholder="Select Number"
-            selectedKeys={localBrothersCount ? [localBrothersCount] : []}
+            selectedKeys={brothersCount ? [brothersCount] : []}
             onSelectionChange={(keys) => handleSelectionChange(keys, 'brothersCount')}
             isRequired
             errorMessage={errors.brothersCount}
@@ -183,7 +174,7 @@ export function FamilyInfoStep({ data, errors, updateData }: FamilyInfoStepProps
           <Select
             label="How many sisters do you have?"
             placeholder="Select Number"
-            selectedKeys={localSistersCount ? [localSistersCount] : []}
+            selectedKeys={sistersCount ? [sistersCount] : []}
             onSelectionChange={(keys) => handleSelectionChange(keys, 'sistersCount')}
             isRequired
             errorMessage={errors.sistersCount}

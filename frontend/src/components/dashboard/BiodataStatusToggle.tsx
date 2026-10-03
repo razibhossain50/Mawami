@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardBody, Switch, Button, Chip, Spinner } from "@heroui/react";
 import { Eye, EyeOff, AlertCircle, Shield, RefreshCw } from "lucide-react";
 import { BiodataApprovalStatus, BiodataVisibilityStatus, BIODATA_STATUS_COLORS } from "@/types/biodata";
@@ -25,9 +25,12 @@ export const BiodataStatusToggle: React.FC<BiodataStatusToggleProps> = ({
   const [localVisibilityStatus, setLocalVisibilityStatus] = useState(biodataVisibilityStatus);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Reset the optimistic local copy when the prop changes (during render, not in an effect)
+  const [prevVisibilityStatus, setPrevVisibilityStatus] = useState(biodataVisibilityStatus);
+  if (biodataVisibilityStatus !== prevVisibilityStatus) {
+    setPrevVisibilityStatus(biodataVisibilityStatus);
     setLocalVisibilityStatus(biodataVisibilityStatus);
-  }, [biodataVisibilityStatus]);
+  }
 
   const handleToggle = async () => {
     if (!canUserToggle || isToggling) return;

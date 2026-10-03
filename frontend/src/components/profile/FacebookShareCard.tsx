@@ -1,8 +1,8 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { BiodataProfile } from '@/types/biodata';
 import { resolveImageUrl } from '@/services/image-service';
-import { User, Heart, MapPin, Briefcase, Calendar, Ruler, Users, Copy, Share } from 'lucide-react';
+import { Heart, Briefcase, Calendar, Ruler, Users, Copy, Share, Check } from 'lucide-react';
 import Image from 'next/image';
 
 interface FacebookShareCardProps {
@@ -11,13 +11,10 @@ interface FacebookShareCardProps {
 }
 
 const FacebookShareCard: React.FC<FacebookShareCardProps> = ({ profile, biodataId }) => {
+  const [copied, setCopied] = useState(false);
   const { url: profileImageUrl, unoptimized } = resolveImageUrl(
     profile.profilePictureVisible ? profile.profilePicture : null
   );
-  
-  // Determine gender-specific fields
-  const isMale = profile.biodataType?.toLowerCase() === 'male' || profile.biodataType?.toLowerCase() === 'groom';
-  const genderSpecificField = isMale ? profile.complexion : profile.complexion; // Both show complexion for now
   
   // Determine gender-specific default image
   const getDefaultImage = () => {
@@ -48,20 +45,9 @@ const FacebookShareCard: React.FC<FacebookShareCardProps> = ({ profile, biodataI
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareData.url);
-      // Create a temporary success indicator
-      const button = document.activeElement as HTMLButtonElement;
-      if (button) {
-        const originalText = button.innerHTML;
-        button.innerHTML = '<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Copied!';
-        button.classList.add('bg-green-500', 'hover:bg-green-600');
-        button.classList.remove('from-rose-500', 'to-pink-500', 'hover:from-rose-600', 'hover:to-pink-600');
-        
-        setTimeout(() => {
-          button.innerHTML = originalText;
-          button.classList.remove('bg-green-500', 'hover:bg-green-600');
-          button.classList.add('from-rose-500', 'to-pink-500', 'hover:from-rose-600', 'hover:to-pink-600');
-        }, 2000);
-      }
+      // Temporary success indicator on the button
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy link:', error);
       alert('Failed to copy link. Please try again.');
@@ -167,10 +153,12 @@ const FacebookShareCard: React.FC<FacebookShareCardProps> = ({ profile, biodataI
           {/* Highlighted Copy Link Button */}
           <button
             onClick={handleCopyLink}
-            className="w-full px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-lg text-sm font-bold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2 border-2 border-white/20 cursor-pointer"
+            className={`w-full px-6 py-3 text-white rounded-lg text-sm font-bold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2 border-2 border-white/20 cursor-pointer ${copied
+              ? 'bg-green-500 hover:bg-green-600'
+              : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600'}`}
           >
-            <Copy className="h-4 w-4" />
-            Copy Profile Link
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copied!' : 'Copy Profile Link'}
           </button>
           
           {/* Facebook Share Button */}

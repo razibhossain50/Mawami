@@ -23,12 +23,6 @@ export default defineConfig([
       "react/no-unescaped-entities": "off",
       "react/display-name": "off",
       "@next/next/no-img-element": "off",
-
-      // React Compiler rules (react-hooks v7) flag existing effect/state patterns;
-      // keep them visible as warnings until those components are refactored.
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/immutability": "warn",
-      "react-hooks/preserve-manual-memoization": "warn",
     },
   },
 ]);

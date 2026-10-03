@@ -13,12 +13,9 @@ export default function GoogleOAuthButton({ mode, className = "" }: GoogleOAuthB
   const handleGoogleAuth = () => {
     setIsLoading(true);
     // Redirect to backend Google OAuth endpoint
-    let backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
-    // Remove trailing slash if present
-    if (backendUrl.endsWith('/')) {
-      backendUrl = backendUrl.slice(0, -1);
-    }
-    window.location.href = `${backendUrl}/api/auth/google`;
+    // Full-page navigation to the backend (an absolute, cross-origin URL)
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+    window.location.assign(new URL('/api/auth/google', backendUrl).toString());
   };
 
   return (

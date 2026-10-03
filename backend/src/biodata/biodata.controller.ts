@@ -101,10 +101,15 @@ export class BiodataController {
   @Get('owner/:id')
   @UseGuards(JwtAuthGuard)
   async findOneForOwner(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthPayload) {
-    if (!(await this.biodataService.validateOwnership(id, user.id))) {
+    // 404 when it doesn't exist (the edit page then offers to create one), 403 when not theirs
+    const biodata = await this.biodataService.findOneForOwner(id);
+    if (!biodata) {
+      throw new NotFoundException('Biodata not found');
+    }
+    if (biodata.userId !== user.id) {
       throw new ForbiddenException('Access denied: You can only access your own biodata');
     }
-    return this.biodataService.findOneForOwner(id);
+    return biodata;
   }
 
   @Put(':id/approval-status')

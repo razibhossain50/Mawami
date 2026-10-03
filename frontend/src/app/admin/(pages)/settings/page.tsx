@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Input, Button, Card, CardBody, CardHeader } from '@heroui/react';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/services/queryClient';
@@ -30,16 +30,16 @@ export default function AdminSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Initialize form with user data
-  useEffect(() => {
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        fullName: user.fullName || '',
-        email: user.email || ''
-      }));
-    }
-  }, [user]);
+  // Prefill the form once per signed-in user (adjusting state during render, not in an effect)
+  const [prefilledFor, setPrefilledFor] = useState<number | null>(null);
+  if (user && prefilledFor !== user.id) {
+    setPrefilledFor(user.id);
+    setFormData(prev => ({
+      ...prev,
+      fullName: user.fullName || '',
+      email: user.email || ''
+    }));
+  }
 
   const handleInputChange = (field: keyof SettingsFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));

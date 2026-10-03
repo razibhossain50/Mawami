@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Lock, User, Mail, AtSign } from "lucide-react";
 import { Card, CardBody, CardHeader, Input, Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
@@ -16,13 +16,13 @@ export default function Settings() {
   const router = useRouter();
   const { user } = useRegularAuth();
 
-  // Prefill form with current user data
-  useEffect(() => {
-    if (user) {
-      setName(user.fullName || "");
-      setEmail(user.email || "");
-    }
-  }, [user]);
+  // Prefill the form once per signed-in user (adjusting state during render, not in an effect)
+  const [prefilledFor, setPrefilledFor] = useState<number | null>(null);
+  if (user && prefilledFor !== user.id) {
+    setPrefilledFor(user.id);
+    setName(user.fullName || "");
+    setEmail(user.email || "");
+  }
 
 
 

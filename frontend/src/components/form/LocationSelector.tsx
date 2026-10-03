@@ -51,7 +51,7 @@ export function LocationSelector({
 }: LocationSelectorProps) {
   const [currentLevel, setCurrentLevel] = useState<Level>("country");
   const [selectionPath, setSelectionPath] = useState<SelectionPath>({});
-  const [locationSelection, setLocationSelection] = useState<string>("");
+  const [locationSelection, setLocationSelection] = useState<string>(value ?? "");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   const locationContainerRef = useRef<HTMLDivElement>(null);
@@ -59,12 +59,14 @@ export function LocationSelector({
   // Get data from geoLocation
   const sourceData = geoLocation[0];
 
-  // Sync internal state with external value prop
-  useEffect(() => {
+  // Follow the external value prop when it changes (during render, not in an effect)
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     if (value !== undefined) {
       setLocationSelection(value);
     }
-  }, [value]);
+  }
 
   // Check if an option has children (should show arrow)
   const hasChildren = (value: string, level: Level): boolean => {

@@ -351,38 +351,21 @@ export default function BiodataForm() {
 
     // Load existing data when component mounts (only once)
     useEffect(() => {
-        console.log('🔄 useEffect triggered:', {
-            existingBiodata: !!existingBiodata,
-            redirecting: existingBiodata?.redirecting,
-            hasLoadedInitialData: hasLoadedInitialData.current,
-            currentStep
-        });
-        console.log('📍 useEffect call stack:', new Error().stack);
-
         if (existingBiodata && !existingBiodata.redirecting && !hasLoadedInitialData.current) {
-            console.log('📥 Loading initial biodata data');
             biodataIdRef.current = existingBiodata.id;
 
-            // Fix completedSteps order if it's out of order
-            if (existingBiodata.completedSteps && Array.isArray(existingBiodata.completedSteps)) {
-                const parsedSteps = existingBiodata.completedSteps.map((s: any) => {
-                    const num = typeof s === 'string' ? parseInt(s) : s;
-                    return isNaN(num) ? null : num;
-                }).filter((n: any) => n !== null) as number[];
-
-                const sortedSteps = [...parsedSteps].sort((a, b) => a - b);
-                const isOutOfOrder = JSON.stringify(parsedSteps) !== JSON.stringify(sortedSteps);
-
-                if (isOutOfOrder) {
-                    // Update the completedSteps in the existing data
-                    existingBiodata.completedSteps = sortedSteps;
-                }
+            // Normalize completedSteps (numbers, ascending) on a copy; the query cache must not be mutated
+            let biodataToLoad = existingBiodata;
+            if (Array.isArray(existingBiodata.completedSteps)) {
+                const sortedSteps = existingBiodata.completedSteps
+                    .map((s: any) => (typeof s === 'string' ? parseInt(s, 10) : s))
+                    .filter((n: any) => typeof n === 'number' && !isNaN(n))
+                    .sort((a: number, b: number) => a - b);
+                biodataToLoad = { ...existingBiodata, completedSteps: sortedSteps };
             }
 
-            loadFormData(existingBiodata, false); // Don't preserve step for initial load
+            loadFormData(biodataToLoad, false); // Don't preserve step for initial load
             hasLoadedInitialData.current = true;
-        } else if (existingBiodata && !existingBiodata.redirecting && hasLoadedInitialData.current) {
-            console.log('⚠️ useEffect running again after initial load - this might be causing the step reset!');
         }
     }, [existingBiodata?.id, existingBiodata?.redirecting]); // Only depend on stable values
 

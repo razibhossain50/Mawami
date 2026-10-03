@@ -6,14 +6,14 @@ import Link from 'next/link';
 import { useRegularAuth } from '@/context/RegularAuthContext';
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
-import { userApi } from '@/services/api-client';
-import { BiodataProfile } from '@/types/api';
+import { useBiodataStatus } from '@/hooks/useBiodataStatus';
 
 function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [biodataId, setBiodataId] = useState<number | null>(null);
-  const [biodataLoading, setBiodataLoading] = useState(true);
+  // The signed-in user's own biodata (shared, cached query)
+  const { statusInfo, loading: biodataLoading } = useBiodataStatus();
+  const biodataId = statusInfo?.id ?? null;
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const { user, isAuthenticated, logout } = useRegularAuth();
@@ -22,43 +22,6 @@ function Header() {
     { label: 'Find your partner', href: '/', active: true }
   ];
 
-  // Fetch user's biodata ID when authenticated
-  useEffect(() => {
-    const fetchUserBiodataId = async () => {
-      if (!isAuthenticated) {
-        setBiodataLoading(false);
-        return;
-      }
-
-      try {
-        logger.debug('Fetching user biodata ID', { userId: user?.id }, 'Header');
-        
-        const data = await userApi.get('/biodatas/current') as BiodataProfile | null;
-        
-        if (data && data.id) {
-          setBiodataId(data.id);
-          logger.debug('User biodata ID found', { biodataId: data.id }, 'Header');
-        } else {
-          setBiodataId(null);
-          logger.debug('No biodata found for user', undefined, 'Header');
-        }
-      } catch (error) {
-        // Handle 404 or other errors gracefully - user might not have biodata yet
-        const appError = handleApiError(error, 'Header');
-        if (appError.statusCode === 404) {
-          setBiodataId(null);
-          logger.debug('User has no biodata yet', undefined, 'Header');
-        } else {
-          logger.error('Error fetching biodata ID', appError, 'Header');
-          setBiodataId(null);
-        }
-      } finally {
-        setBiodataLoading(false);
-      }
-    };
-
-    fetchUserBiodataId();
-  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

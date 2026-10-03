@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   User, Heart, GraduationCap, Briefcase, MapPin, Users, Phone, Mail, Calendar, Ruler, Weight, Droplets, Shield,
   Home, AlertCircle, RefreshCw, Star, Share2, MessageCircle, Sparkles, Edit, Plus, ArrowLeft, Search, Lock
@@ -11,6 +12,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useProfileView } from "@/hooks/useProfileView";
+import { useBiodataStatus } from "@/hooks/useBiodataStatus";
 import { BiodataProfile, BiodataApprovalStatus, BiodataVisibilityStatus } from "@/types/biodata";
 import { BiodataStatusHandler } from "@/components/biodata/BiodataStatusHandler";
 import { logger } from '@/services/logger';
@@ -37,21 +39,80 @@ const formatDate = (dateString: string): string => {
 
 
 
+// Profile for the viewer: owners get their own biodata in any state, everyone else the public view
+async function fetchProfileFor(biodataId: string, token: string | null): Promise<BiodataProfile | null> {
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL;
+  let response: Response | null = null;
+
+  if (token) {
+    const ownerResponse = await fetch(`${api}/api/biodatas/owner/${biodataId}`, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    }).catch(() => null);
+    // Not the owner (403) or any other failure: fall back to the public endpoint
+    if (ownerResponse?.ok) {
+      response = ownerResponse;
+    }
+  }
+
+  response ??= await fetch(`${api}/api/biodatas/${biodataId}`, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Profile not found. This biodata may not exist or has been removed.");
+    } else if (response.status === 403) {
+      throw new Error("Access denied. You may not have permission to view this profile.");
+    } else if (response.status >= 500) {
+      throw new Error("Server error occurred. Please try again later.");
+    }
+    throw new Error(`Failed to fetch profile: ${response.status} ${response.statusText}`);
+  }
+
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    return null;
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(responseText.includes('<html') || responseText.includes('<!DOCTYPE')
+      ? 'Server configuration error. Please contact support.'
+      : 'Invalid response format from server. Please try again later.');
+  }
+  return data && typeof data === 'object' && Object.keys(data).length > 0 ? (data as BiodataProfile) : null;
+}
+
 export default function Profile() {
-  const [profile, setProfile] = useState<BiodataProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFavoriteProfile, setIsFavoriteProfile] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [userHasBiodata, setUserHasBiodata] = useState(false);
-  const [checkingUserBiodata, setCheckingUserBiodata] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const params = useParams();
   const router = useRouter();
   const biodataId = params.id as string;
   const { user, isAuthenticated } = useRegularAuth();
-  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const { addToFavorites, removeFromFavorites, favoriteIds } = useFavorites();
   const { trackProfileView } = useProfileView();
+  const { statusInfo: ownBiodataStatus, loading: checkingUserBiodata } = useBiodataStatus();
+
+  // Keyed by viewer: re-fetches once auth has loaded, so owners see their unapproved biodata
+  const {
+    data: profile = null,
+    isLoading: loading,
+    error: profileError,
+    refetch,
+  } = useQuery({
+    queryKey: ['profile', biodataId, user?.id ?? null],
+    enabled: !!biodataId,
+    retry: false,
+    queryFn: () => fetchProfileFor(biodataId, isAuthenticated ? localStorage.getItem('regular_user_access_token') : null),
+  });
+  const error = profileError instanceof Error ? profileError.message : null;
+
+  // Whether the viewer has a biodata of their own (gates contact details)
+  const userHasBiodata = isAuthenticated && !!user && !!ownBiodataStatus;
+  const isFavoriteProfile = !!profile && favoriteIds.has(profile.id);
 
   // Check if the current user can edit this profile
   const canEditProfile = useMemo(() => {
@@ -59,169 +120,6 @@ export default function Profile() {
     // User can edit if they own this profile (userId matches)
     return profile.userId === user.id;
   }, [isAuthenticated, user, profile]);
-
-  const fetchProfile = useCallback(async () => {
-    if (!biodataId) return;
-
-    try {
-      setError(null);
-      setLoading(true);
-
-      // Try to fetch as owner first (if authenticated), then fall back to public
-      let response;
-      const token = localStorage.getItem('regular_user_access_token');
-
-      if (token && isAuthenticated) {
-        // Try owner endpoint first (user can always see their own biodata)
-        try {
-          response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/owner/${biodataId}`, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            }
-          });
-
-          // If owner endpoint fails (not owner), fall back to public endpoint
-          if (!response.ok && response.status !== 403) {
-            throw new Error('Owner fetch failed');
-          }
-        } catch (ownerError) {
-          // Fall back to public endpoint
-          response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/${biodataId}`, {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-        }
-      } else {
-        // Not authenticated, use public endpoint
-        response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/${biodataId}`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          setError("Profile not found. This biodata may not exist or has been removed.");
-        } else if (response.status === 500) {
-          setError("Server error occurred. Please try again later.");
-        } else if (response.status === 403) {
-          setError("Access denied. You may not have permission to view this profile.");
-        } else {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          setError(`Failed to fetch profile: ${response.status} ${response.statusText}`);
-        }
-        return;
-      }
-
-      // Get response text first
-      const responseText = await response.text();
-
-      if (!responseText.trim()) {
-        // Empty response means no biodata exists - show create biodata section
-        setProfile(null);
-        return;
-      }
-
-      // Try to parse as JSON with better error handling
-      try {
-        const data = JSON.parse(responseText);
-
-        // Check if data is null or empty (no biodata found)
-        if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-          // No biodata found - show create biodata section
-          setProfile(null);
-          return;
-        }
-
-        // Validate that we received a valid biodata object
-        if (typeof data !== 'object') {
-          throw new Error('Invalid data format received');
-        }
-
-        setProfile(data);
-      } catch (parseError) {
-        // Check if it's an HTML error page
-        if (responseText.includes('<html>') || responseText.includes('<!DOCTYPE')) {
-          setError('Server configuration error. Please contact support.');
-        } else if (responseText.includes('404') || responseText.includes('Not Found')) {
-          // 404 in response text means no biodata - show create section
-          setProfile(null);
-        } else {
-          setError('Invalid response format from server. Please try again later.');
-        }
-      }
-    } catch (error) {
-      const appError = handleApiError(error, 'Component');
-      logger.error('Error fetching profile', appError, 'Page');
-      setError(error instanceof Error ? error.message : "Failed to load profile");
-    } finally {
-      setLoading(false);
-    }
-  }, [biodataId]);
-
-  // Check if the current user has their own biodata
-  const checkUserBiodata = useCallback(async () => {
-    if (!isAuthenticated || !user) {
-      setUserHasBiodata(false);
-      setCheckingUserBiodata(false);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('regular_user_access_token');
-      if (!token) {
-        setUserHasBiodata(false);
-        setCheckingUserBiodata(false);
-        return;
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/current`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-
-      if (response.ok) {
-        const responseText = await response.text();
-        // If we get a valid response with biodata, user has biodata
-        if (responseText.trim() && !responseText.includes('404')) {
-          try {
-            const data = JSON.parse(responseText);
-            setUserHasBiodata(data && typeof data === 'object' && Object.keys(data).length > 0);
-          } catch {
-            setUserHasBiodata(false);
-          }
-        } else {
-          setUserHasBiodata(false);
-        }
-      } else {
-        setUserHasBiodata(false);
-      }
-    } catch (error) {
-      const appError = handleApiError(error, 'Component');
-      logger.error('Error checking user biodata', appError, 'Page');
-      setUserHasBiodata(false);
-    } finally {
-      setCheckingUserBiodata(false);
-    }
-  }, [isAuthenticated, user]);
-
-  // Check if profile is in favorites when profile loads
-  const checkFavoriteStatus = useCallback(async () => {
-    if (!profile || !isAuthenticated || !user) return;
-
-    try {
-      const favoriteStatus = await isFavorite(profile.id);
-      setIsFavoriteProfile(favoriteStatus);
-    } catch (error) {
-      const appError = handleApiError(error, 'Component');
-      logger.error('Error checking favorite status', appError, 'Page');
-    }
-  }, [profile, isAuthenticated, user, isFavorite]);
 
   // Handle add/remove favorites
   const handleFavoriteToggle = async () => {
@@ -234,17 +132,10 @@ export default function Profile() {
 
     try {
       setFavoriteLoading(true);
-
       if (isFavoriteProfile) {
-        const success = await removeFromFavorites(profile.id);
-        if (success) {
-          setIsFavoriteProfile(false);
-        }
+        await removeFromFavorites(profile.id);
       } else {
-        const success = await addToFavorites(profile.id);
-        if (success) {
-          setIsFavoriteProfile(true);
-        }
+        await addToFavorites(profile.id);
       }
     } catch (error) {
       const appError = handleApiError(error, 'Component');
@@ -316,37 +207,18 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
-
-  useEffect(() => {
-    checkFavoriteStatus();
-  }, [checkFavoriteStatus]);
-
-  useEffect(() => {
-    checkUserBiodata();
-  }, [checkUserBiodata]);
-
   // Track profile view when profile loads successfully
+  const profileId = profile?.id;
   useEffect(() => {
-    if (profile && biodataId) {
-      const trackView = async () => {
-        try {
-          await trackProfileView(parseInt(biodataId));
-        } catch (error) {
-          const appError = handleApiError(error, 'Component');
-          logger.error('Failed to track profile view', appError, 'Page');
-        }
-      };
-
-      trackView();
+    if (profileId) {
+      trackProfileView(profileId).catch((error: unknown) => {
+        logger.error('Failed to track profile view', handleApiError(error, 'Component'), 'Page');
+      });
     }
-  }, [profile, biodataId, trackProfileView]);
+  }, [profileId, trackProfileView]);
 
   const handleRetry = () => {
-    setLoading(true);
-    fetchProfile();
+    void refetch();
   };
 
   if (loading) {

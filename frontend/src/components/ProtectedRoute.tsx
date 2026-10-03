@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../context/AuthContext'
 
@@ -10,7 +10,8 @@ export const ProtectedRoute = ({ children, requiredRoles = ['admin', 'superadmin
 }) => {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
-  const [hasRedirected, setHasRedirected] = useState(false)
+  // Ref, not state: it only guards against a double redirect and never affects rendering
+  const hasRedirected = useRef(false)
 
   const hasRequiredRole = user?.role && requiredRoles.includes(user.role)
 
@@ -20,13 +21,13 @@ export const ProtectedRoute = ({ children, requiredRoles = ['admin', 'superadmin
 
     // If not authenticated or doesn't have required role, redirect to login
     if (!isAuthenticated || !hasRequiredRole) {
-      if (!hasRedirected) {
-        setHasRedirected(true)
+      if (!hasRedirected.current) {
+        hasRedirected.current = true
         router.push('/auth/admin/login')
       }
       return
     }
-  }, [isAuthenticated, isLoading, hasRequiredRole, router, hasRedirected])
+  }, [isAuthenticated, isLoading, hasRequiredRole, router])
 
   // Show loading while checking authentication
   if (isLoading) {
