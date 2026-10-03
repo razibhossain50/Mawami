@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -7,7 +8,7 @@ import { User } from '../user/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateUserDto } from '../user/create-user.dto';
-import { AuthPayload } from './interfaces/auth-payload.interface';
+import type { AuthPayload } from './interfaces/auth-payload.interface';
 
 interface GoogleUser {
   googleId: string;
@@ -23,7 +24,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private config: ConfigService
   ) { }
 
   async signup(createUserDto: CreateUserDto) {
@@ -76,9 +78,17 @@ export class AuthService {
     }
   }
 
+  private findByEmailWithPassword(email: string) {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.email = :email', { email })
+      .getOne();
+  }
+
   async validateUser(loginDto: LoginDto): Promise<AuthPayload> {
     const normalizedEmail = loginDto.email.toLowerCase().trim();
-    const user = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    const user = await this.findByEmailWithPassword(normalizedEmail);
 
     if (!user) {
       throw new UnauthorizedException('No account found with this email. Please sign up first.');
@@ -105,14 +115,9 @@ export class AuthService {
     const user = await this.validateUser(loginDto);
     const payload = { id: user.id, email: user.email, role: user.role };
 
-    console.log('=== LOGIN DEBUG ===');
-    console.log('JWT_SECRET being used:', 'your-secret-key');
-    console.log('Payload being signed:', payload);
-
     const fullUser = await this.usersRepository.findOne({ where: { id: user.id } });
 
     const token = this.jwtService.sign(payload);
-    console.log('Generated token:', token);
 
     return {
       access_token: token,
@@ -128,7 +133,7 @@ export class AuthService {
   // Admin authentication methods (email-based)
   async validateAdminUser(adminLoginDto: AdminLoginDto): Promise<AuthPayload> {
     const normalizedEmail = adminLoginDto.email.toLowerCase().trim();
-    const user = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    const user = await this.findByEmailWithPassword(normalizedEmail);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -137,6 +142,10 @@ export class AuthService {
     // Check if user has admin or superadmin role
     if (user.role !== 'admin' && user.role !== 'superadmin') {
       throw new UnauthorizedException('Access denied. Admin privileges required.');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(adminLoginDto.password, user.password);
@@ -156,14 +165,9 @@ export class AuthService {
     const user = await this.validateAdminUser(adminLoginDto);
     const payload = { id: user.id, email: user.email, role: user.role };
 
-    console.log('=== ADMIN LOGIN DEBUG ===');
-    console.log('JWT_SECRET being used:', 'your-secret-key');
-    console.log('Payload being signed:', payload);
-
     const fullUser = await this.usersRepository.findOne({ where: { id: user.id } });
 
     const token = this.jwtService.sign(payload);
-    console.log('Generated token:', token);
 
     return {
       access_token: token,
@@ -249,54 +253,31 @@ export class AuthService {
   }
 
   async createSuperAdmin() {
-    try {
-      const superAdminEmail = 'razibmahmud50@gmail.com';
-      const normalizedEmail = superAdminEmail.toLowerCase().trim();
-      
-      // Create superadmin with email
-      const superAdminExists = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    const email = this.config.get<string>('SUPERADMIN_EMAIL')?.toLowerCase().trim();
+    const password = this.config.get<string>('SUPERADMIN_PASSWORD');
+    if (!email || !password) {
+      console.log('SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD not set; skipping superadmin bootstrap');
+      return;
+    }
 
-      if (superAdminExists) {
-        // Just update the password if account exists
-        const hashedPassword = await bcrypt.hash('Superadmin@50', 10);
-        superAdminExists.password = hashedPassword;
-        superAdminExists.role = 'superadmin'; // Ensure role is correct
-        await this.usersRepository.save(superAdminExists);
-        console.log(`Superadmin password updated for email: ${normalizedEmail}`);
+    try {
+      // Only bootstrap a missing account; never overwrite an existing password
+      const existing = await this.usersRepository.findOne({ where: { email } });
+      if (existing) {
         return;
       }
 
-      // Create new superadmin account with email
-      const hashedPassword = await bcrypt.hash('Superadmin@50', 10);
       const admin = this.usersRepository.create({
-        email: normalizedEmail,
-        password: hashedPassword,
+        email,
+        password: await bcrypt.hash(password, 10),
         role: 'superadmin',
-        fullName: 'Razib Hossain'
+        fullName: this.config.get<string>('SUPERADMIN_NAME') || 'Super Admin',
       });
-
       await this.usersRepository.save(admin);
-      console.log(`New superadmin created: ${normalizedEmail} / Superadmin@50`);
+      console.log(`Superadmin created: ${email}`);
     } catch (error) {
       console.error('Error in createSuperAdmin:', error.message);
-
-      // Fallback: ensure we have at least one working superadmin
-      try {
-        const anySuperAdmin = await this.usersRepository.findOne({ where: { role: 'superadmin' } });
-        if (!anySuperAdmin) {
-          const hashedPassword = await bcrypt.hash('Superadmin@50', 10);
-          const fallbackAdmin = this.usersRepository.create({
-            email: 'razibmahmud50@gmail.com',
-            password: hashedPassword,
-            role: 'superadmin',
-            fullName: 'Razib Hossain'
-          });
-          await this.usersRepository.save(fallbackAdmin);
-          console.log('Fallback superadmin created: razibmahmud50@gmail.com / Superadmin@50');
-        }
-      } catch (fallbackError) {
-        console.error('Failed to create fallback admin:', fallbackError.message);
-      }
     }
   }
+
 }

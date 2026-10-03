@@ -1,5 +1,5 @@
 "use client";
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Shield, Lock, Eye, Users, Database, Bell } from "lucide-react";
 import Link from "next/link";
 
@@ -23,13 +23,13 @@ export default function PrivacyPolicy() {
         {/* Content */}
         <div className="space-y-8">
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Lock className="h-6 w-6 text-blue-600" />
                 <h2 className="text-xl font-bold text-gray-800">Information We Collect</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   We collect information you provide directly to us, such as when you create an account, 
@@ -42,17 +42,17 @@ export default function PrivacyPolicy() {
                   <li>Communication preferences</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Eye className="h-6 w-6 text-green-600" />
                 <h2 className="text-xl font-bold text-gray-800">How We Use Your Information</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>We use the information we collect to:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
@@ -63,17 +63,17 @@ export default function PrivacyPolicy() {
                   <li>Ensure platform security and prevent fraud</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Users className="h-6 w-6 text-purple-600" />
                 <h2 className="text-xl font-bold text-gray-800">Information Sharing</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   We do not sell, trade, or rent your personal information to third parties. 
@@ -86,17 +86,17 @@ export default function PrivacyPolicy() {
                   <li>To protect our rights and safety</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Database className="h-6 w-6 text-orange-600" />
                 <h2 className="text-xl font-bold text-gray-800">Data Security</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   We implement appropriate security measures to protect your personal information:
@@ -108,17 +108,17 @@ export default function PrivacyPolicy() {
                   <li>Secure hosting and infrastructure</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Bell className="h-6 w-6 text-rose-600" />
                 <h2 className="text-xl font-bold text-gray-800">Your Rights</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>You have the right to:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
@@ -129,7 +129,7 @@ export default function PrivacyPolicy() {
                   <li>Request data portability</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 

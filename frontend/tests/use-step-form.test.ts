@@ -24,6 +24,7 @@ describe('useStepForm', () => {
       partnerAgeMin: 18,
       partnerAgeMax: 35,
       sameAsPermanent: false,
+      profilePictureVisible: false,
     });
   });
 
@@ -42,6 +43,7 @@ describe('useStepForm', () => {
       partnerAgeMin: 18,
       partnerAgeMax: 35,
       sameAsPermanent: false,
+      profilePictureVisible: false,
       religion: 'Islam',
       biodataType: 'Male',
       age: 25,

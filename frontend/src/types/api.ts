@@ -114,6 +114,7 @@ export interface BiodataProfile {
   // Contact Information
   fullName: string;
   profilePicture: string | null;
+  profilePictureVisible?: boolean;
   email: string;
   guardianMobile: string;
   ownMobile: string;

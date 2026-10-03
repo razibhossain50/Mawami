@@ -1,16 +1,18 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   User, Heart, GraduationCap, Briefcase, MapPin, Users, Phone, Mail, Calendar, Ruler, Weight, Droplets, Shield,
   Home, AlertCircle, RefreshCw, Star, Share2, MessageCircle, Sparkles, Edit, Plus, ArrowLeft, Search, Lock
 } from "lucide-react";
-import { Card, CardBody, CardHeader, Button, Chip, addToast } from "@heroui/react";
+import { Card, Button, Chip } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useProfileView } from "@/hooks/useProfileView";
+import { useBiodataStatus } from "@/hooks/useBiodataStatus";
 import { BiodataProfile, BiodataApprovalStatus, BiodataVisibilityStatus } from "@/types/biodata";
 import { BiodataStatusHandler } from "@/components/biodata/BiodataStatusHandler";
 import { logger } from '@/services/logger';
@@ -37,21 +39,80 @@ const formatDate = (dateString: string): string => {
 
 
 
+// Profile for the viewer: owners get their own biodata in any state, everyone else the public view
+async function fetchProfileFor(biodataId: string, token: string | null): Promise<BiodataProfile | null> {
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL;
+  let response: Response | null = null;
+
+  if (token) {
+    const ownerResponse = await fetch(`${api}/api/biodatas/owner/${biodataId}`, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    }).catch(() => null);
+    // Not the owner (403) or any other failure: fall back to the public endpoint
+    if (ownerResponse?.ok) {
+      response = ownerResponse;
+    }
+  }
+
+  response ??= await fetch(`${api}/api/biodatas/${biodataId}`, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Profile not found. This biodata may not exist or has been removed.");
+    } else if (response.status === 403) {
+      throw new Error("Access denied. You may not have permission to view this profile.");
+    } else if (response.status >= 500) {
+      throw new Error("Server error occurred. Please try again later.");
+    }
+    throw new Error(`Failed to fetch profile: ${response.status} ${response.statusText}`);
+  }
+
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    return null;
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(responseText.includes('<html') || responseText.includes('<!DOCTYPE')
+      ? 'Server configuration error. Please contact support.'
+      : 'Invalid response format from server. Please try again later.');
+  }
+  return data && typeof data === 'object' && Object.keys(data).length > 0 ? (data as BiodataProfile) : null;
+}
+
 export default function Profile() {
-  const [profile, setProfile] = useState<BiodataProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFavoriteProfile, setIsFavoriteProfile] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [userHasBiodata, setUserHasBiodata] = useState(false);
-  const [checkingUserBiodata, setCheckingUserBiodata] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const params = useParams();
   const router = useRouter();
   const biodataId = params.id as string;
   const { user, isAuthenticated } = useRegularAuth();
-  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const { addToFavorites, removeFromFavorites, favoriteIds } = useFavorites();
   const { trackProfileView } = useProfileView();
+  const { statusInfo: ownBiodataStatus, loading: checkingUserBiodata } = useBiodataStatus();
+
+  // Keyed by viewer: re-fetches once auth has loaded, so owners see their unapproved biodata
+  const {
+    data: profile = null,
+    isLoading: loading,
+    error: profileError,
+    refetch,
+  } = useQuery({
+    queryKey: ['profile', biodataId, user?.id ?? null],
+    enabled: !!biodataId,
+    retry: false,
+    queryFn: () => fetchProfileFor(biodataId, isAuthenticated ? localStorage.getItem('regular_user_access_token') : null),
+  });
+  const error = profileError instanceof Error ? profileError.message : null;
+
+  // Whether the viewer has a biodata of their own (gates contact details)
+  const userHasBiodata = isAuthenticated && !!user && !!ownBiodataStatus;
+  const isFavoriteProfile = !!profile && favoriteIds.has(profile.id);
 
   // Check if the current user can edit this profile
   const canEditProfile = useMemo(() => {
@@ -59,169 +120,6 @@ export default function Profile() {
     // User can edit if they own this profile (userId matches)
     return profile.userId === user.id;
   }, [isAuthenticated, user, profile]);
-
-  const fetchProfile = useCallback(async () => {
-    if (!biodataId) return;
-
-    try {
-      setError(null);
-      setLoading(true);
-
-      // Try to fetch as owner first (if authenticated), then fall back to public
-      let response;
-      const token = localStorage.getItem('regular_user_access_token');
-
-      if (token && isAuthenticated) {
-        // Try owner endpoint first (user can always see their own biodata)
-        try {
-          response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/owner/${biodataId}`, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            }
-          });
-
-          // If owner endpoint fails (not owner), fall back to public endpoint
-          if (!response.ok && response.status !== 403) {
-            throw new Error('Owner fetch failed');
-          }
-        } catch (ownerError) {
-          // Fall back to public endpoint
-          response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/${biodataId}`, {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-        }
-      } else {
-        // Not authenticated, use public endpoint
-        response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/${biodataId}`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          setError("Profile not found. This biodata may not exist or has been removed.");
-        } else if (response.status === 500) {
-          setError("Server error occurred. Please try again later.");
-        } else if (response.status === 403) {
-          setError("Access denied. You may not have permission to view this profile.");
-        } else {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          setError(`Failed to fetch profile: ${response.status} ${response.statusText}`);
-        }
-        return;
-      }
-
-      // Get response text first
-      const responseText = await response.text();
-
-      if (!responseText.trim()) {
-        // Empty response means no biodata exists - show create biodata section
-        setProfile(null);
-        return;
-      }
-
-      // Try to parse as JSON with better error handling
-      try {
-        const data = JSON.parse(responseText);
-
-        // Check if data is null or empty (no biodata found)
-        if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-          // No biodata found - show create biodata section
-          setProfile(null);
-          return;
-        }
-
-        // Validate that we received a valid biodata object
-        if (typeof data !== 'object') {
-          throw new Error('Invalid data format received');
-        }
-
-        setProfile(data);
-      } catch (parseError) {
-        // Check if it's an HTML error page
-        if (responseText.includes('<html>') || responseText.includes('<!DOCTYPE')) {
-          setError('Server configuration error. Please contact support.');
-        } else if (responseText.includes('404') || responseText.includes('Not Found')) {
-          // 404 in response text means no biodata - show create section
-          setProfile(null);
-        } else {
-          setError('Invalid response format from server. Please try again later.');
-        }
-      }
-    } catch (error) {
-      const appError = handleApiError(error, 'Component');
-      logger.error('Error fetching profile', appError, 'Page');
-      setError(error instanceof Error ? error.message : "Failed to load profile");
-    } finally {
-      setLoading(false);
-    }
-  }, [biodataId]);
-
-  // Check if the current user has their own biodata
-  const checkUserBiodata = useCallback(async () => {
-    if (!isAuthenticated || !user) {
-      setUserHasBiodata(false);
-      setCheckingUserBiodata(false);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('regular_user_access_token');
-      if (!token) {
-        setUserHasBiodata(false);
-        setCheckingUserBiodata(false);
-        return;
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/current`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-
-      if (response.ok) {
-        const responseText = await response.text();
-        // If we get a valid response with biodata, user has biodata
-        if (responseText.trim() && !responseText.includes('404')) {
-          try {
-            const data = JSON.parse(responseText);
-            setUserHasBiodata(data && typeof data === 'object' && Object.keys(data).length > 0);
-          } catch {
-            setUserHasBiodata(false);
-          }
-        } else {
-          setUserHasBiodata(false);
-        }
-      } else {
-        setUserHasBiodata(false);
-      }
-    } catch (error) {
-      const appError = handleApiError(error, 'Component');
-      logger.error('Error checking user biodata', appError, 'Page');
-      setUserHasBiodata(false);
-    } finally {
-      setCheckingUserBiodata(false);
-    }
-  }, [isAuthenticated, user]);
-
-  // Check if profile is in favorites when profile loads
-  const checkFavoriteStatus = useCallback(async () => {
-    if (!profile || !isAuthenticated || !user) return;
-
-    try {
-      const favoriteStatus = await isFavorite(profile.id);
-      setIsFavoriteProfile(favoriteStatus);
-    } catch (error) {
-      const appError = handleApiError(error, 'Component');
-      logger.error('Error checking favorite status', appError, 'Page');
-    }
-  }, [profile, isAuthenticated, user, isFavorite]);
 
   // Handle add/remove favorites
   const handleFavoriteToggle = async () => {
@@ -234,17 +132,10 @@ export default function Profile() {
 
     try {
       setFavoriteLoading(true);
-
       if (isFavoriteProfile) {
-        const success = await removeFromFavorites(profile.id);
-        if (success) {
-          setIsFavoriteProfile(false);
-        }
+        await removeFromFavorites(profile.id);
       } else {
-        const success = await addToFavorites(profile.id);
-        if (success) {
-          setIsFavoriteProfile(true);
-        }
+        await addToFavorites(profile.id);
       }
     } catch (error) {
       const appError = handleApiError(error, 'Component');
@@ -316,37 +207,18 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
-
-  useEffect(() => {
-    checkFavoriteStatus();
-  }, [checkFavoriteStatus]);
-
-  useEffect(() => {
-    checkUserBiodata();
-  }, [checkUserBiodata]);
-
   // Track profile view when profile loads successfully
+  const profileId = profile?.id;
   useEffect(() => {
-    if (profile && biodataId) {
-      const trackView = async () => {
-        try {
-          await trackProfileView(parseInt(biodataId));
-        } catch (error) {
-          const appError = handleApiError(error, 'Component');
-          logger.error('Failed to track profile view', appError, 'Page');
-        }
-      };
-
-      trackView();
+    if (profileId) {
+      trackProfileView(profileId).catch((error: unknown) => {
+        logger.error('Failed to track profile view', handleApiError(error, 'Component'), 'Page');
+      });
     }
-  }, [profile, biodataId, trackProfileView]);
+  }, [profileId, trackProfileView]);
 
   const handleRetry = () => {
-    setLoading(true);
-    fetchProfile();
+    void refetch();
   };
 
   if (loading) {
@@ -401,11 +273,11 @@ export default function Profile() {
               </div>
             </div>
             <div className="mt-6 space-x-4">
-              <Button onClick={handleRetry} variant="flat" className="flex items-center gap-2">
+              <Button variant="secondary" onPress={handleRetry} className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Retry
               </Button>
-              <Button variant="flat">
+              <Button variant="secondary">
                 <Link href="/profile/biodatas">
                   Back to All Profiles
                 </Link>
@@ -454,7 +326,7 @@ export default function Profile() {
             </div>
 
             {/* Content Section */}
-            <CardBody className="p-8">
+            <Card.Content className="p-8">
               <div className="text-center space-y-6">
                 <div className="max-w-2xl mx-auto">
                   <h3 className="text-xl font-semibold text-gray-800 mb-4">
@@ -490,7 +362,6 @@ export default function Profile() {
                   <Button
                     size="lg"
                     className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-8 py-3 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-
                   >
                     <Link className="flex items-center" href="/profile/biodatas/edit/new">
                       <Plus className="h-5 w-5 mr-2" />
@@ -499,12 +370,12 @@ export default function Profile() {
                   </Button>
 
                   <div className="flex justify-center gap-4">
-                    <Button variant="flat" >
+                    <Button variant="secondary">
                       <Link href="/profile/biodatas">
                         Browse All Profiles
                       </Link>
                     </Button>
-                    <Button variant="flat" >
+                    <Button variant="secondary">
                       <Link href="/dashboard">
                         Go to Dashboard
                       </Link>
@@ -520,7 +391,7 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       </div>
@@ -533,14 +404,12 @@ export default function Profile() {
         {/* Back to Search Button */}
         <div className="flex justify-center">
           <Button
-            variant="solid"
+            variant="primary"
             size="lg"
             className="flex items-center gap-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             onPress={handleBackToSearch}
           >
-            <div className="p-1 bg-white/20 rounded-full">
-              <ArrowLeft className="h-4 w-4" />
-            </div>
+            <ArrowLeft className="h-4 w-4" />
             <span>Back to Search Page</span>
           </Button>
         </div>
@@ -561,7 +430,7 @@ export default function Profile() {
                 {canEditProfile && (
                   <Chip
                     size="sm"
-                    variant="flat"
+                    variant="soft"
                     className={`capitalize ${profile.biodataApprovalStatus === 'approved'
                       ? 'bg-green-100 text-green-800 border-green-200'
                       : profile.biodataApprovalStatus === 'pending'
@@ -583,10 +452,9 @@ export default function Profile() {
 
             {canEditProfile && (
               <Button
-                variant="solid"
+                variant="primary"
                 size="sm"
                 className="flex items-center gap-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-all duration-200 hover:shadow-md"
-
               >
                 <Link className="flex gap-3" href={`/profile/biodatas/edit/${biodataId}`}>
                   <Edit className="h-4 w-4" />
@@ -595,21 +463,21 @@ export default function Profile() {
               </Button>
             )}
             <Button
-              variant="solid"
+              variant="primary"
               size="sm"
               className={`flex items-center gap-2 transition-all duration-200 hover:shadow-md ${isFavoriteProfile
                 ? 'bg-rose-500 text-white hover:bg-rose-600'
-                : 'border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700'
+                : 'bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700'
                 }`}
               onPress={handleFavoriteToggle}
-              isLoading={favoriteLoading}
-              disabled={favoriteLoading}
+              isPending={favoriteLoading}
+              isDisabled={favoriteLoading}
             >
               <Heart className={`h-4 w-4 ${isFavoriteProfile ? 'fill-current' : ''}`} />
               {isFavoriteProfile ? 'Remove from Favorites' : 'Add to Favorites'}
             </Button>
             <Button
-              variant="solid"
+              variant="primary"
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 transition-all duration-300 hover:shadow-xl hover:scale-110 font-bold px-6 py-2 shadow-lg rounded-full"
               onPress={handleShareClick}
@@ -618,7 +486,7 @@ export default function Profile() {
               Share
             </Button>
             <Button
-              variant="bordered"
+              variant="outline"
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white border-0 transition-all duration-200 hover:shadow-lg hover:scale-105"
               onPress={handleContactClick}
@@ -643,7 +511,7 @@ export default function Profile() {
             <Heart className="h-6 w-6 text-white animate-pulse delay-1000" />
           </div>
 
-          <CardBody className="relative p-4">
+          <Card.Content className="relative p-4">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Enhanced Profile Picture */}
               <div className="relative">
@@ -734,22 +602,22 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         {/* Enhanced Main Content Grid */}
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Personal Information */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500 rounded-lg group-hover:scale-110 transition-transform">
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Personal Information</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
@@ -807,22 +675,22 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
 
 
           {/* Education */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-500 rounded-lg group-hover:scale-110 transition-transform">
                   <GraduationCap className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Education Background</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
@@ -851,20 +719,20 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Professional Information */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Briefcase className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Professional Details</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
                   <p className="text-sm font-semibold text-gray-600 mb-1">Profession</p>
@@ -878,18 +746,18 @@ export default function Profile() {
                   <p className="text-base font-medium text-gray-800">{safeDisplay(profile.economicCondition)}</p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Home className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Permanent Address</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
                   <p className="text-sm font-semibold text-gray-600 mb-1">Area & Upazilla</p>
@@ -913,19 +781,19 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-teal-500 rounded-lg group-hover:scale-110 transition-transform">
                   <MapPin className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Present Address</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {profile.sameAsPermanent ? (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                   <Home className="h-8 w-8 text-blue-500 mx-auto mb-3" />
@@ -957,20 +825,20 @@ export default function Profile() {
                   </div>
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Enhanced Family Information */}
           <Card className="w-full bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Family Information</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Parents Information */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
@@ -1060,19 +928,19 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
           {/* Enhanced Family Information */}
           <Card className="w-full bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Family Information</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Siblings & Family Details */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-100">
@@ -1106,19 +974,19 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Heart className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Partner Preferences</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Basic Preferences */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg p-3 border border-rose-100">
@@ -1158,20 +1026,20 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Enhanced Partner Preferences */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-pink-50 via-rose-50 to-red-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Heart className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-gray-800">Partner Preferences</span>
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {/* Professional & Location Preferences */}
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
@@ -1210,11 +1078,11 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
           {/* Contact Information */}
           <Card id="contact-information" className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-            <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-500 rounded-lg group-hover:scale-110 transition-transform">
                   <Phone className="h-5 w-5 text-white" />
@@ -1226,8 +1094,8 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </CardHeader>
-            <CardBody className="p-4">
+            </Card.Header>
+            <Card.Content className="p-4">
               {checkingUserBiodata ? (
                 // Loading state while checking if user has biodata
                 <div className="text-center py-6">
@@ -1325,7 +1193,7 @@ export default function Profile() {
                   </div>
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 
@@ -1340,7 +1208,7 @@ export default function Profile() {
             <Heart className="h-8 w-8 text-white animate-pulse delay-1000" />
           </div>
 
-          <CardBody className="relative p-4 text-center">
+          <Card.Content className="relative p-4 text-center">
             <div className="max-w-2xl mx-auto space-y-4">
               <div className="space-y-2">
                 <h3 className="text-2xl md:text-3xl font-bold">
@@ -1353,21 +1221,21 @@ export default function Profile() {
 
               <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
                 <Button
-                  variant="solid"
+                  variant="primary"
                   size="lg"
                   className={`font-semibold px-8 py-3 rounded-full transition-all duration-300 hover:shadow-xl group ${isFavoriteProfile
                     ? 'bg-white text-rose-600 hover:bg-rose-50'
-                    : 'border-white text-rose-600 hover:bg-white hover:text-rose-600 hover:border-rose-600'
+                    : 'bg-transparent border-2 border-white text-white hover:bg-white hover:text-rose-600'
                     }`}
                   onPress={handleFavoriteToggle}
-                  isLoading={favoriteLoading}
-                  disabled={favoriteLoading}
+                  isPending={favoriteLoading}
+                  isDisabled={favoriteLoading}
                 >
-                  <Heart className={`h-4 w-4 mr-2 group-hover:text-rose-600 transition-colors duration-300 ${isFavoriteProfile ? 'fill-current' : ''}`} />
+                  <Heart className={`h-4 w-4 mr-2 transition-colors duration-300 ${isFavoriteProfile ? 'fill-current' : ''}`} />
                   {isFavoriteProfile ? 'Remove from Favorites' : 'Add to Favorites'}
                 </Button>
                 <Button
-                  variant="solid"
+                  variant="primary"
                   size="lg"
                   className="bg-white text-rose-600 hover:bg-rose-50 font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   onPress={handleContactClick}
@@ -1388,7 +1256,7 @@ export default function Profile() {
                 </span>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
 

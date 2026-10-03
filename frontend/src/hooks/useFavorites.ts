@@ -1,138 +1,95 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRegularAuth } from '@/context/RegularAuthContext';
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
 import { favoritesService } from '@/services/api-services';
-import { FavoritesResponse, FavoriteItem } from '@/types/api';
+import { FavoriteItem } from '@/types/api';
+
+// One cached favorites list per user, shared by every component that uses this hook
+export const favoritesQueryKey = (userId?: number) => ['favorites', userId] as const;
 
 export const useFavorites = () => {
   const { user, isAuthenticated } = useRegularAuth();
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const enabled = isAuthenticated && !!user;
+  const queryKey = favoritesQueryKey(user?.id);
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    return localStorage.getItem('regular_user_access_token');
-  };
+  const { data: favorites = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey,
+    enabled,
+    queryFn: async (): Promise<FavoriteItem[]> => (await favoritesService.getFavorites()).data ?? [],
+  });
 
-  // Fetch user's favorites
-  const fetchFavorites = useCallback(async () => {
-    if (!isAuthenticated || !user) return;
+  // Ids of favorited biodatas, for synchronous "is this a favorite?" checks
+  const favoriteIds = useMemo(() => new Set(favorites.map((fav) => fav.biodata?.id ?? fav.biodataId)), [favorites]);
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      logger.debug('Fetching user favorites', { userId: user.id }, 'useFavorites');
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
-      const data = await favoritesService.getFavorites();
-      setFavorites(data.data || []);
-      
-      logger.info('Favorites fetched successfully', { count: data.data?.length || 0 }, 'useFavorites');
-    } catch (error) {
-      const appError = handleApiError(error, 'useFavorites');
-      logger.error('Error fetching favorites', appError, 'useFavorites');
-      setError(appError.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, user]);
-
-  // Add biodata to favorites
+  // Returns false when not logged in so the caller can redirect
   const addToFavorites = async (biodataId: number): Promise<boolean> => {
-    if (!isAuthenticated || !user) {
-      // Return false to let the calling component handle the redirect
-      return false;
-    }
-
+    if (!enabled) return false;
     try {
-      setError(null);
-      logger.info('Adding biodata to favorites', { biodataId, userId: user.id }, 'useFavorites');
-
       await favoritesService.addToFavorites(biodataId);
-      
-      logger.info('Biodata added to favorites successfully', { biodataId }, 'useFavorites');
+      await invalidate();
       return true;
-    } catch (error) {
-      const appError = handleApiError(error, 'useFavorites');
-      logger.error('Error adding to favorites', appError, 'useFavorites');
-      
+    } catch (err) {
+      const appError = handleApiError(err, 'useFavorites');
+      // Already a favorite: the list is just stale
       if (appError.statusCode === 409) {
-        setError('Already in favorites');
-      } else {
-        setError(appError.message);
+        await invalidate();
+        return true;
       }
+      logger.error('Error adding to favorites', appError, 'useFavorites');
       return false;
     }
   };
 
-  // Remove biodata from favorites
   const removeFromFavorites = async (biodataId: number): Promise<boolean> => {
-    if (!isAuthenticated || !user) return false;
-
+    if (!enabled) return false;
     try {
-      setError(null);
-      logger.info('Removing biodata from favorites', { biodataId, userId: user.id }, 'useFavorites');
-
       await favoritesService.removeFromFavorites(biodataId);
-
-      // Update local state immediately
-      setFavorites(prev => prev.filter(fav => fav.biodata.id !== biodataId));
-      
-      logger.info('Biodata removed from favorites successfully', { biodataId }, 'useFavorites');
+      queryClient.setQueryData<FavoriteItem[]>(queryKey, (prev) =>
+        prev?.filter((fav) => (fav.biodata?.id ?? fav.biodataId) !== biodataId),
+      );
       return true;
-    } catch (error) {
-      const appError = handleApiError(error, 'useFavorites');
-      logger.error('Error removing from favorites', appError, 'useFavorites');
-      setError(appError.message);
+    } catch (err) {
+      logger.error('Error removing from favorites', handleApiError(err, 'useFavorites'), 'useFavorites');
       return false;
     }
   };
 
-  // Check if biodata is in favorites
   const isFavorite = async (biodataId: number): Promise<boolean> => {
-    if (!isAuthenticated || !user) return false;
-
+    if (!enabled) return false;
     try {
       const data = await favoritesService.checkFavorite(biodataId);
       return data.isFavorite || false;
-    } catch (error) {
-      const appError = handleApiError(error, 'useFavorites');
-      logger.error('Error checking favorite status', appError, 'useFavorites');
+    } catch (err) {
+      logger.error('Error checking favorite status', handleApiError(err, 'useFavorites'), 'useFavorites');
       return false;
     }
   };
 
-  // Get favorites count
   const getFavoriteCount = async (): Promise<number> => {
-    if (!isAuthenticated || !user) return 0;
-
+    if (!enabled) return 0;
     try {
       const data = await favoritesService.getFavoriteCount();
       return data.count || 0;
-    } catch (error) {
-      const appError = handleApiError(error, 'useFavorites');
-      logger.error('Error getting favorite count', appError, 'useFavorites');
+    } catch (err) {
+      logger.error('Error getting favorite count', handleApiError(err, 'useFavorites'), 'useFavorites');
       return 0;
     }
   };
 
-  // Load favorites when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchFavorites();
-    }
-  }, [fetchFavorites, isAuthenticated, user]);
-
   return {
     favorites,
+    favoriteIds,
     loading,
-    error,
+    error: error instanceof Error ? error.message : null,
     addToFavorites,
     removeFromFavorites,
     isFavorite,
     getFavoriteCount,
-    fetchFavorites,
+    fetchFavorites: refetch,
   };
 };

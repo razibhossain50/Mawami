@@ -5,7 +5,26 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { QueryFailedError } from 'typeorm';
+import type { Request, Response } from 'express';
+
+// PostgreSQL constraint violations that are client errors, not server faults
+const PG_ERRORS: Record<string, { status: HttpStatus; message: string }> = {
+  '23505': { status: HttpStatus.CONFLICT, message: 'A record with this information already exists' },
+  '23503': { status: HttpStatus.BAD_REQUEST, message: 'Invalid reference to a related record' },
+  '23502': { status: HttpStatus.BAD_REQUEST, message: 'A required field is missing' },
+  '23514': { status: HttpStatus.BAD_REQUEST, message: 'Invalid data format' },
+  '22P02': { status: HttpStatus.BAD_REQUEST, message: 'Invalid input value' },
+};
+
+// "Not Found" style label for a status code, e.g. 404 -> "Not Found"
+const statusLabel = (status: number) =>
+  (HttpStatus[status] ?? 'Error')
+    .toString()
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -14,46 +33,42 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
-    let error = 'Internal Server Error';
+    let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message: string | string[] = 'Internal server error';
+    let error: string | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      
+
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
       } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-        const responseObj = exceptionResponse as any;
-        message = responseObj.message || responseObj.error || message;
-        error = responseObj.error || error;
+        const responseObj = exceptionResponse as { message?: string | string[]; error?: string };
+        message = responseObj.message || responseObj.error || exception.message;
+        error = responseObj.error;
       }
-    } else if (exception instanceof Error) {
-      message = exception.message;
-      error = exception.name || 'Error';
-      
-      // Log the full error for debugging
+    } else if (exception instanceof QueryFailedError && PG_ERRORS[(exception as any).code]) {
+      ({ status, message } = PG_ERRORS[(exception as any).code]);
+    }
+
+    if (status >= 500) {
+      // Full details go to the server log only; the client gets a generic message
       console.error('Unhandled error:', {
-        message: exception.message,
-        name: exception.name,
-        stack: exception.stack,
         url: request.url,
         method: request.method,
-        body: request.body,
-        user: (request as any).user,
+        userId: (request as any).user?.id,
+        error: exception instanceof Error ? exception.stack : exception,
       });
     }
 
-    const errorResponse = {
+    response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
       message,
-      error,
-    };
-
-    response.status(status).json(errorResponse);
+      error: error ?? statusLabel(status),
+    });
   }
 }

@@ -1,5 +1,7 @@
 'use client';
-import { Input, Textarea, Card, CardBody, CardHeader, Slider } from "@heroui/react";
+import { FormInput, FormTextarea } from "@/components/ui/form-fields";
+import { Card } from "@heroui/react";
+import { AgeRangeSlider } from "@/components/ui/age-range-slider";
 import { useState } from "react";
 
 interface PartnerPreferencesStepProps {
@@ -39,33 +41,16 @@ export function PartnerPreferencesStep({
       </div>
 
       <Card className="shadow-md">
-        <CardHeader className="border-b pb-4 border-gray-200">
+        <Card.Header className="border-b pb-4 border-gray-200">
           <h3 className="text-lg font-semibold text-slate-800">
             Partner Preferences
           </h3>
-        </CardHeader>
-        <CardBody className="space-y-8 pt-6">
+        </Card.Header>
+        <Card.Content className="space-y-8 pt-6">
           {/* Partner Age Range */}
           <div className="space-y-4">
             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-              <Slider
-                className="max-w-full"
-                aria-label="Preferred Age Range"
-                label="Preferred Age Range"
-                minValue={18}
-                maxValue={70}
-                step={1}
-                value={ageRange as [number, number]}
-                onChange={(val) => {
-                  const values = Array.isArray(val) ? val : [ageRange[0], ageRange[1]];
-                  // Enforce min < max
-                  const min = Math.min(values[0], values[1] - 1);
-                  const max = Math.max(values[1], min + 1);
-                  handleAgeRangeChange([min, max]);
-                }}
-                formatOptions={{ style: "unit", unit: "year" }}
-                getValue={(vals) => Array.isArray(vals) ? `${vals[0]} - ${vals[1]} years` : `${vals} years`}
-              />
+              <AgeRangeSlider value={ageRange as [number, number]} onChange={handleAgeRangeChange} />
             </div>
 
             {(errors.partnerAgeMin || errors.partnerAgeMax) && (
@@ -76,66 +61,66 @@ export function PartnerPreferencesStep({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            <Input
+            <FormInput
               label="Preferred Complexion"
               placeholder="Enter preferred complexion"
               value={(data.partnerComplexion as string) || ""}
-              onChange={(e) => updateData({ partnerComplexion: e.target.value })}
+              onValueChange={(value) => updateData({ partnerComplexion: value })}
               isRequired
               errorMessage={errors.partnerComplexion}
               isInvalid={!!errors.partnerComplexion}
             />
 
-            <Input
+            <FormInput
               label="Preferred Height"
               placeholder="Enter preferred height"
               value={(data.partnerHeight as string) || ""}
-              onChange={(e) => updateData({ partnerHeight: e.target.value })}
+              onValueChange={(value) => updateData({ partnerHeight: value })}
               isRequired
               errorMessage={errors.partnerHeight}
               isInvalid={!!errors.partnerHeight}
             />
 
-            <Input
+            <FormInput
               label="Preferred Education"
               placeholder="Enter preferred education"
               value={(data.partnerEducation as string) || ""}
-              onChange={(e) => updateData({ partnerEducation: e.target.value })}
+              onValueChange={(value) => updateData({ partnerEducation: value })}
               isRequired
               errorMessage={errors.partnerEducation}
               isInvalid={!!errors.partnerEducation}
             />
 
-            <Input
+            <FormInput
               label="Preferred Profession"
               placeholder="Enter preferred profession"
               value={(data.partnerProfession as string) || ""}
-              onChange={(e) => updateData({ partnerProfession: e.target.value })}
+              onValueChange={(value) => updateData({ partnerProfession: value })}
               isRequired
               errorMessage={errors.partnerProfession}
               isInvalid={!!errors.partnerProfession}
             />
           </div>
 
-          <Textarea
+          <FormTextarea
             label="Preferred Place"
             placeholder="Enter preferred location"
             value={(data.partnerLocation as string) || ""}
-            onChange={(e) => updateData({ partnerLocation: e.target.value })}
+            onValueChange={(value) => updateData({ partnerLocation: value })}
             isRequired
             errorMessage={errors.partnerLocation}
             isInvalid={!!errors.partnerLocation}
-            minRows={2}
+            rows={2}
           />
 
-          <Textarea
+          <FormTextarea
             label="Details about the prospective spouse"
             placeholder="Share your expectations and preferences for your life partner"
             value={(data.partnerDetails as string) || ""}
-            onChange={(e) => updateData({ partnerDetails: e.target.value })}
-            minRows={3}
+            onValueChange={(value) => updateData({ partnerDetails: value })}
+            rows={3}
           />
-        </CardBody>
+        </Card.Content>
       </Card>
     </div>
   );

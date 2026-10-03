@@ -1,19 +1,11 @@
 "use client";
+import { FormInput } from "@/components/ui/form-fields";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import {
-  Card,
-  CardBody,
-  CardHeader,
-  Input,
-  Button,
-  Divider,
-  Spinner,
-  Chip
-} from "@heroui/react";
+import { Card, Button, Separator, Spinner, Chip } from "@heroui/react";
 import { Eye, EyeOff, User, Lock, Sparkles } from "lucide-react";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import GoogleOAuthButton from "./GoogleOAuthButton";
@@ -63,7 +55,7 @@ export default function LoginFormRegular() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card className="w-full shadow-2xl border-0 bg-white/80 backdrop-blur-md">
-          <CardHeader className="flex flex-col items-center justify-center text-center pb-4 pt-8">
+          <Card.Header className="flex flex-col items-center justify-center text-center pb-4 pt-8">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold text-gray-800">
                 Welcome Back
@@ -72,14 +64,14 @@ export default function LoginFormRegular() {
                 Sign in to find your perfect match
               </p>
             </div>
-          </CardHeader>
+          </Card.Header>
 
-          <CardBody className="px-6 pb-6">
+          <Card.Content className="px-6 pb-6">
             {error && (
               <div className="mb-4">
                 <Chip
                   color="danger"
-                  variant="flat"
+                  variant="soft"
                   className="w-full p-3 h-auto whitespace-normal"
                 >
                   {error}
@@ -88,23 +80,20 @@ export default function LoginFormRegular() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <Input
-                {...register("email")}
+              <FormInput variant="bordered"
+                inputProps={register("email")}
                 type="email"
                 label="Email"
                 placeholder="Enter your email address"
                 startContent={<User className="w-4 h-4 text-gray-400" />}
-                variant="bordered"
                 isInvalid={!!errors.email}
                 errorMessage={errors.email?.message}
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                }}
+                inputClassName="text-sm"
+                groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
-              <Input
-                {...register("password")}
+              <FormInput variant="bordered"
+                inputProps={register("password")}
                 label="Password"
                 placeholder="Enter your password"
                 startContent={<Lock className="w-4 h-4 text-gray-400" />}
@@ -122,22 +111,18 @@ export default function LoginFormRegular() {
                   </button>
                 }
                 type={isVisible ? "text" : "password"}
-                variant="bordered"
                 isInvalid={!!errors.password}
                 errorMessage={errors.password?.message}
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                }}
+                inputClassName="text-sm"
+                groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold py-3 text-base hover:from-pink-600 hover:to-purple-600 transition-all duration-200"
                 size="lg"
-                isLoading={isLoading}
+                isPending={isLoading}
                 isDisabled={!isValid}
-                spinner={<Spinner size="sm" color="white" />}
               >
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
@@ -145,7 +130,7 @@ export default function LoginFormRegular() {
 
             <div className="mt-6">
               <div className="relative">
-                <Divider className="my-4" />
+                <Separator className="my-4" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="bg-white px-3 text-sm text-gray-500">
                     or continue with
@@ -158,7 +143,7 @@ export default function LoginFormRegular() {
               </div>
 
               <div className="relative mt-6">
-                <Divider className="my-4" />
+                <Separator className="my-4" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="bg-white px-3 text-sm text-gray-500">
                     New to Mawami?
@@ -169,7 +154,7 @@ export default function LoginFormRegular() {
               <div className="text-center mt-4">
                 <Link href="/auth/signup">
                   <Button
-                    variant="light"
+                    variant="ghost"
                     className="text-pink-600 hover:text-pink-700 font-medium"
                   >
                     Create your account
@@ -177,7 +162,7 @@ export default function LoginFormRegular() {
                 </Link>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         <div className="text-center mt-6">

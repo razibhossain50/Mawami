@@ -51,7 +51,7 @@ export function LocationSelector({
 }: LocationSelectorProps) {
   const [currentLevel, setCurrentLevel] = useState<Level>("country");
   const [selectionPath, setSelectionPath] = useState<SelectionPath>({});
-  const [locationSelection, setLocationSelection] = useState<string>("");
+  const [locationSelection, setLocationSelection] = useState<string>(value ?? "");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   const locationContainerRef = useRef<HTMLDivElement>(null);
@@ -59,12 +59,14 @@ export function LocationSelector({
   // Get data from geoLocation
   const sourceData = geoLocation[0];
 
-  // Sync internal state with external value prop
-  useEffect(() => {
+  // Follow the external value prop when it changes (during render, not in an effect)
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     if (value !== undefined) {
       setLocationSelection(value);
     }
-  }, [value]);
+  }
 
   // Check if an option has children (should show arrow)
   const hasChildren = (value: string, level: Level): boolean => {
@@ -285,11 +287,11 @@ export function LocationSelector({
           }
         }}
       >
-        <div className="text-[13px] text-foreground-500">
+        <div className="text-[13px] text-muted">
           {label}
           {isRequired && <span className="text-red-500 ml-1">*</span>}
         </div>
-        <div className="flex items-center justify-between text-foreground-500">
+        <div className="flex items-center justify-between text-muted">
           <span className={`text-md truncate pr-2`}>
             {displayValue || placeholder}
           </span>
@@ -299,13 +301,13 @@ export function LocationSelector({
                 e.stopPropagation();
                 resetLocation();
               }}
-              className="p-1 hover:bg-muted-foreground/20 rounded-full transition-colors flex-shrink-0"
+              className="p-1 hover:bg-default rounded-full transition-colors flex-shrink-0"
               aria-label="Clear selection"
             >
               <X className="w-4 h-4" />
             </button>
           ) : (
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform flex-shrink-0 ${isLocationDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-muted transition-transform flex-shrink-0 ${isLocationDropdownOpen ? 'rotate-180' : ''}`} />
           )}
         </div>
       </div>
@@ -324,7 +326,7 @@ export function LocationSelector({
                     setCurrentLevel(levels[currentIndex - 1]);
                   }
                 }}
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 text-sm text-muted hover:text-foreground"
                 aria-label="Go back to previous level"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -347,7 +349,7 @@ export function LocationSelector({
               >
                 <span className="text-sm">{option.name}</span>
                 {option.hasChildren && (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-4 h-4 text-muted" />
                 )}
               </button>
             ))}

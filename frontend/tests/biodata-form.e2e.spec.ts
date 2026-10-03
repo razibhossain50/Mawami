@@ -1,196 +1,209 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/**
+ * E2E tests for the multi-step biodata form (/profile/biodatas/edit/new).
+ *
+ * Requires a running frontend + backend and a regular (role "user") account:
+ *   E2E_EMAIL=you@example.com E2E_PASSWORD=secret npx playwright test --project=chromium
+ *
+ * Note: "Next" saves each step to the backend (PUT /api/biodatas/current), so the account's
+ * biodata is modified. If the account already has a biodata, /edit/new redirects to
+ * /edit/<id> and the form is pre-filled; the tests overwrite the values either way.
+ */
+
+const EMAIL = process.env.E2E_EMAIL;
+const PASSWORD = process.env.E2E_PASSWORD;
+
+const STEP_TITLES = [
+  'Personal Information',
+  'Educational Information',
+  'Family Information',
+  'Desired Life Partner',
+  'Contact Information',
+];
+
+// ---------- helpers ----------
+
+async function login(page: Page) {
+  await page.goto('/auth/login');
+  await page.getByLabel('Email').fill(EMAIL!);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD!);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.waitForURL('**/dashboard', { timeout: 15000 });
+}
+
+/** The h2 inside the form body (the step indicator has a matching h3). */
+const stepHeading = (page: Page, title: string) =>
+  page.getByRole('heading', { name: title, level: 2 });
+
+/** HeroUI Select is a button + popover listbox (not a native <select>). */
+async function chooseOption(page: Page, label: string | RegExp, option: string) {
+  await page.getByRole('button', { name: label }).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+}
+
+/** Drill-down location picker: country > division > district > upazila. */
+async function chooseLocation(page: Page, label: 'Permanent Address' | 'Present Address', path: string[]) {
+  const trigger = page.locator('div[role="button"]', { hasText: label });
+  await trigger.click();
+  const container = trigger.locator('xpath=..');
+  for (const name of path) {
+    await container.getByRole('button', { name, exact: true }).click();
+  }
+}
+
+async function fillDateOfBirth(page: Page, mmddyyyy: string) {
+  // Segmented date field: focus the first segment (month) and type all digits
+  await page.getByRole('spinbutton').first().click();
+  await page.keyboard.type(mmddyyyy);
+}
+
+async function fillStep1(page: Page) {
+  await chooseOption(page, /Religion/, 'Islam');
+  await chooseOption(page, /Biodata Type/, 'Male');
+  await chooseOption(page, /Marital Status/, 'Unmarried');
+  await fillDateOfBirth(page, '01011995');
+  await chooseOption(page, /Height/, '5\'6"');
+  await page.getByLabel(/Weight/).fill('70');
+  await chooseOption(page, /Complexion/, 'Wheatish');
+  await page.getByLabel(/Profession/).fill('Engineer');
+  await chooseOption(page, /Blood Group/, 'A+');
+
+  await chooseLocation(page, 'Permanent Address', ['Bangladesh', 'Dhaka', 'Dhaka', 'Savar']);
+  await page.getByLabel(/Area or Village Name/).first().fill('Test Area');
+  await page.getByText('Present address is same as permanent address').click();
+
+  await page.getByLabel(/physical or mental health issues/).fill('None');
+}
+
+async function fillStep2(page: Page) {
+  await chooseOption(page, /Your Education Medium/, 'English');
+  await chooseOption(page, /Highest Education Level/, 'Honours');
+  await page.getByLabel(/Institute or University Name/).fill('Test University');
+  await page.getByLabel(/Which subject do you study/).fill('Computer Science');
+  await page.getByLabel(/Passing Year/).fill('2020');
+  await chooseOption(page, /^Result/, 'A');
+}
+
+async function fillStep3(page: Page) {
+  await chooseOption(page, /Family's Economic Condition/, 'Middle Class');
+  await page.getByLabel(/Father's Name/).fill('Test Father');
+  await page.getByLabel(/Father's Profession/).fill('Teacher');
+  await chooseOption(page, /Is your father alive/, 'Yes');
+  await page.getByLabel(/Mother's Name/).fill('Test Mother');
+  await page.getByLabel(/Mother's Profession/).fill('Housewife');
+  await chooseOption(page, /Is your mother alive/, 'Yes');
+  await chooseOption(page, /How many brothers/, '1');
+  await chooseOption(page, /How many sisters/, '1');
+}
+
+async function fillStep4(page: Page) {
+  // Age range slider keeps its default (18 - 35)
+  await page.getByLabel(/Preferred Complexion/).fill('Fair');
+  await page.getByLabel(/Preferred Height/).fill('5\'0" - 5\'6"');
+  await page.getByLabel(/Preferred Education/).fill('Bachelor');
+  await page.getByLabel(/Preferred Profession/).fill('Any');
+  await page.getByLabel(/Preferred Place/).fill('Dhaka');
+}
+
+async function fillStep5(page: Page) {
+  await page.getByLabel(/Your full name/).fill('Test User');
+  await page.getByLabel(/^Email/).fill('e2e-test@example.com');
+  await page.getByLabel(/Guardian's Mobile Number/).fill('01700000000');
+  await page.getByLabel(/Own Mobile Number/).fill('01800000000');
+}
+
+const next = (page: Page) => page.getByRole('button', { name: /^(Next|Saving)/ });
+const previous = (page: Page) => page.getByRole('button', { name: 'Previous' });
+
+async function clickNextAndExpect(page: Page, nextTitle: string) {
+  await next(page).click();
+  await expect(stepHeading(page, nextTitle)).toBeVisible({ timeout: 15000 });
+}
+
+/** Fill steps 1..n and land on step n+1. */
+async function advanceTo(page: Page, step: number) {
+  const fillers = [fillStep1, fillStep2, fillStep3, fillStep4];
+  for (let i = 0; i < step - 1; i++) {
+    await fillers[i](page);
+    await clickNextAndExpect(page, STEP_TITLES[i + 1]);
+  }
+}
+
+// ---------- tests ----------
 
 test.describe('Biodata Form', () => {
+  test.skip(!EMAIL || !PASSWORD, 'Set E2E_EMAIL and E2E_PASSWORD to run the biodata form tests');
+
   test.beforeEach(async ({ page }) => {
-    // Navigate to the biodata form page
+    await login(page);
     await page.goto('/profile/biodatas/edit/new');
-    
-    // Wait for the page to load
-    await page.waitForSelector('[data-testid="biodata-form"]', { timeout: 10000 });
+    await expect(stepHeading(page, STEP_TITLES[0])).toBeVisible({ timeout: 15000 });
   });
 
-  test('should display the form with step indicator', async ({ page }) => {
-    // Check if the form is visible
-    await expect(page.locator('[data-testid="biodata-form"]')).toBeVisible();
-    
-    // Check if step indicator is visible
-    await expect(page.locator('[data-testid="step-indicator"]')).toBeVisible();
-    
-    // Check if we're on step 1
-    await expect(page.locator('text=Personal Information')).toBeVisible();
-    await expect(page.locator('text=Basic details about you')).toBeVisible();
+  test('shows the first step with the step indicator', async ({ page }) => {
+    await expect(page.getByText('Step 1 of 5')).toBeVisible();
+    await expect(page.getByText('Basic details about you')).toBeVisible(); // indicator subtitle
+    await expect(previous(page)).toBeDisabled();
+    await expect(next(page)).toBeVisible();
   });
 
-  test('should validate required fields in step 1', async ({ page }) => {
-    // Try to proceed without filling any fields
-    await page.click('[data-testid="next-button"]');
-    
-    // Check if validation errors appear
-    await expect(page.locator('text=Religion is required')).toBeVisible();
-    await expect(page.locator('text=Biodata type is required')).toBeVisible();
+  test('shows a validation error when required fields are empty', async ({ page }) => {
+    // A pre-filled (existing) biodata would pass validation, so only check on a fresh account
+    test.skip(!page.url().endsWith('/edit/new'), 'Account already has a biodata');
+
+    await next(page).click();
+    await expect(page.getByText(/religion is required/i)).toBeVisible();
+    await expect(stepHeading(page, STEP_TITLES[0])).toBeVisible();
   });
 
-  test('should fill step 1 and progress to step 2', async ({ page }) => {
-    // Fill required fields in step 1
-    await page.selectOption('[data-testid="religion-select"]', 'Islam');
-    await page.selectOption('[data-testid="biodata-type-select"]', 'Male');
-    await page.selectOption('[data-testid="marital-status-select"]', 'Single');
-    await page.fill('[data-testid="date-of-birth-input"]', '1995-01-01');
-    await page.fill('[data-testid="height-input"]', '5.6');
-    await page.fill('[data-testid="weight-input"]', '70');
-    await page.selectOption('[data-testid="complexion-select"]', 'Wheatish');
-    await page.fill('[data-testid="profession-input"]', 'Engineer');
-    await page.selectOption('[data-testid="blood-group-select"]', 'A+');
-    
-    // Fill address fields
-    await page.selectOption('[data-testid="permanent-country-select"]', 'Bangladesh');
-    await page.selectOption('[data-testid="permanent-division-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-zilla-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-upazilla-select"]', 'Dhanmondi');
-    await page.fill('[data-testid="permanent-area-input"]', 'Test Area');
-    
-    // Check "same as permanent" for present address
-    await page.check('[data-testid="same-as-permanent-checkbox"]');
-    
-    await page.fill('[data-testid="health-issues-input"]', 'None');
-    
-    // Click next button
-    await page.click('[data-testid="next-button"]');
-    
-    // Wait for step 2 to load
-    await page.waitForSelector('text=Educational Information', { timeout: 5000 });
-    
-    // Verify we're on step 2
-    await expect(page.locator('text=Educational Information')).toBeVisible();
-    await expect(page.locator('text=Your academic background')).toBeVisible();
-    
-    // Check if step 1 is marked as completed in the step indicator
-    await expect(page.locator('[data-testid="step-1"]')).toHaveClass(/bg-green-600/);
+  test('completes step 1 and moves to step 2', async ({ page }) => {
+    await fillStep1(page);
+    await expect(page.getByText('Age: 3')).toBeVisible(); // age is derived from the DOB
+
+    await clickNextAndExpect(page, 'Educational Information');
+    await expect(page.getByText('Step 2 of 5')).toBeVisible();
   });
 
-  test('should fill step 2 and progress to step 3', async ({ page }) => {
-    // First complete step 1 (reuse the previous test logic)
-    await page.selectOption('[data-testid="religion-select"]', 'Islam');
-    await page.selectOption('[data-testid="biodata-type-select"]', 'Male');
-    await page.selectOption('[data-testid="marital-status-select"]', 'Single');
-    await page.fill('[data-testid="date-of-birth-input"]', '1995-01-01');
-    await page.fill('[data-testid="height-input"]', '5.6');
-    await page.fill('[data-testid="weight-input"]', '70');
-    await page.selectOption('[data-testid="complexion-select"]', 'Wheatish');
-    await page.fill('[data-testid="profession-input"]', 'Engineer');
-    await page.selectOption('[data-testid="blood-group-select"]', 'A+');
-    await page.selectOption('[data-testid="permanent-country-select"]', 'Bangladesh');
-    await page.selectOption('[data-testid="permanent-division-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-zilla-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-upazilla-select"]', 'Dhanmondi');
-    await page.fill('[data-testid="permanent-area-input"]', 'Test Area');
-    await page.check('[data-testid="same-as-permanent-checkbox"]');
-    await page.fill('[data-testid="health-issues-input"]', 'None');
-    await page.click('[data-testid="next-button"]');
-    
-    // Wait for step 2
-    await page.waitForSelector('text=Educational Information', { timeout: 5000 });
-    
-    // Fill step 2 fields
-    await page.selectOption('[data-testid="education-medium-select"]', 'English');
-    await page.selectOption('[data-testid="highest-education-select"]', 'Bachelor');
-    await page.fill('[data-testid="institute-name-input"]', 'Test University');
-    await page.fill('[data-testid="passing-year-input"]', '2020');
-    await page.selectOption('[data-testid="result-select"]', '3.5');
-    
-    // Click next button
-    await page.click('[data-testid="next-button"]');
-    
-    // Wait for step 3
-    await page.waitForSelector('text=Family Information', { timeout: 5000 });
-    
-    // Verify we're on step 3
-    await expect(page.locator('text=Family Information')).toBeVisible();
-    await expect(page.locator('text=About your family')).toBeVisible();
+  test('completes step 2 and moves to step 3', async ({ page }) => {
+    await advanceTo(page, 2);
+    await fillStep2(page);
+    await clickNextAndExpect(page, 'Family Information');
   });
 
-  test('should allow going back to previous steps', async ({ page }) => {
-    // Complete step 1 and go to step 2
-    await page.selectOption('[data-testid="religion-select"]', 'Islam');
-    await page.selectOption('[data-testid="biodata-type-select"]', 'Male');
-    await page.selectOption('[data-testid="marital-status-select"]', 'Single');
-    await page.fill('[data-testid="date-of-birth-input"]', '1995-01-01');
-    await page.fill('[data-testid="height-input"]', '5.6');
-    await page.fill('[data-testid="weight-input"]', '70');
-    await page.selectOption('[data-testid="complexion-select"]', 'Wheatish');
-    await page.fill('[data-testid="profession-input"]', 'Engineer');
-    await page.selectOption('[data-testid="blood-group-select"]', 'A+');
-    await page.selectOption('[data-testid="permanent-country-select"]', 'Bangladesh');
-    await page.selectOption('[data-testid="permanent-division-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-zilla-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-upazilla-select"]', 'Dhanmondi');
-    await page.fill('[data-testid="permanent-area-input"]', 'Test Area');
-    await page.check('[data-testid="same-as-permanent-checkbox"]');
-    await page.fill('[data-testid="health-issues-input"]', 'None');
-    await page.click('[data-testid="next-button"]');
-    
-    await page.waitForSelector('text=Educational Information', { timeout: 5000 });
-    
-    // Click back button
-    await page.click('[data-testid="back-button"]');
-    
-    // Verify we're back on step 1
-    await expect(page.locator('text=Personal Information')).toBeVisible();
-    await expect(page.locator('text=Basic details about you')).toBeVisible();
+  test('completes step 3 and moves to step 4', async ({ page }) => {
+    await advanceTo(page, 3);
+    await fillStep3(page);
+    await clickNextAndExpect(page, 'Desired Life Partner');
   });
 
-  test('should allow clicking on completed steps in step indicator', async ({ page }) => {
-    // Complete step 1 and go to step 2
-    await page.selectOption('[data-testid="religion-select"]', 'Islam');
-    await page.selectOption('[data-testid="biodata-type-select"]', 'Male');
-    await page.selectOption('[data-testid="marital-status-select"]', 'Single');
-    await page.fill('[data-testid="date-of-birth-input"]', '1995-01-01');
-    await page.fill('[data-testid="height-input"]', '5.6');
-    await page.fill('[data-testid="weight-input"]', '70');
-    await page.selectOption('[data-testid="complexion-select"]', 'Wheatish');
-    await page.fill('[data-testid="profession-input"]', 'Engineer');
-    await page.selectOption('[data-testid="blood-group-select"]', 'A+');
-    await page.selectOption('[data-testid="permanent-country-select"]', 'Bangladesh');
-    await page.selectOption('[data-testid="permanent-division-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-zilla-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-upazilla-select"]', 'Dhanmondi');
-    await page.fill('[data-testid="permanent-area-input"]', 'Test Area');
-    await page.check('[data-testid="same-as-permanent-checkbox"]');
-    await page.fill('[data-testid="health-issues-input"]', 'None');
-    await page.click('[data-testid="next-button"]');
-    
-    await page.waitForSelector('text=Educational Information', { timeout: 5000 });
-    
-    // Click on step 1 in the step indicator
-    await page.click('[data-testid="step-1"]');
-    
-    // Verify we're back on step 1
-    await expect(page.locator('text=Personal Information')).toBeVisible();
+  test('completes step 4 and moves to step 5 (last step)', async ({ page }) => {
+    await advanceTo(page, 4);
+    await fillStep4(page);
+    await clickNextAndExpect(page, 'Contact Information');
+    await expect(page.getByRole('button', { name: /Create Biodata|Update Biodata/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Next' })).toHaveCount(0);
   });
 
-  test('should show loading state during form submission', async ({ page }) => {
-    // Fill and submit the form
-    await page.selectOption('[data-testid="religion-select"]', 'Islam');
-    await page.selectOption('[data-testid="biodata-type-select"]', 'Male');
-    await page.selectOption('[data-testid="marital-status-select"]', 'Single');
-    await page.fill('[data-testid="date-of-birth-input"]', '1995-01-01');
-    await page.fill('[data-testid="height-input"]', '5.6');
-    await page.fill('[data-testid="weight-input"]', '70');
-    await page.selectOption('[data-testid="complexion-select"]', 'Wheatish');
-    await page.fill('[data-testid="profession-input"]', 'Engineer');
-    await page.selectOption('[data-testid="blood-group-select"]', 'A+');
-    await page.selectOption('[data-testid="permanent-country-select"]', 'Bangladesh');
-    await page.selectOption('[data-testid="permanent-division-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-zilla-select"]', 'Dhaka');
-    await page.selectOption('[data-testid="permanent-upazilla-select"]', 'Dhanmondi');
-    await page.fill('[data-testid="permanent-area-input"]', 'Test Area');
-    await page.check('[data-testid="same-as-permanent-checkbox"]');
-    await page.fill('[data-testid="health-issues-input"]', 'None');
-    
-    // Click next button and check for loading state
-    await page.click('[data-testid="next-button"]');
-    
-    // The button should show loading state
-    await expect(page.locator('[data-testid="next-button"]')).toHaveAttribute('disabled');
+  test('Previous button goes back a step', async ({ page }) => {
+    await advanceTo(page, 2);
+    await previous(page).click();
+    await expect(stepHeading(page, STEP_TITLES[0])).toBeVisible();
+  });
+
+  test('completed steps can be revisited from the step indicator', async ({ page }) => {
+    await advanceTo(page, 2);
+    await page.getByTitle(/Personal Information/).click();
+    await expect(stepHeading(page, STEP_TITLES[0])).toBeVisible();
+  });
+
+  test('submits the whole form and redirects to the biodata page', async ({ page }) => {
+    await advanceTo(page, 5);
+    await fillStep5(page);
+
+    await page.getByRole('button', { name: /Create Biodata|Update Biodata/ }).click();
+
+    await expect(page.getByText(/submitted successfully/i)).toBeVisible({ timeout: 15000 });
+    await page.waitForURL(/\/profile\/biodatas\/\d+$/, { timeout: 15000 });
   });
 });

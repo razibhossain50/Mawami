@@ -2,7 +2,7 @@
 
 "use client";
 import { BiodataSearch } from "@/components/biodata/BiodataSearch";
-import { Card, CardBody, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { PlusCircle, FileText, Camera, Heart, Sparkles, Zap, Users, UserCheck, Award, TrendingUp, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -114,7 +114,7 @@ const AllBiodatas = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
                         {successStory.map((item, index) => (
                             <Card key={index} className="border-2 border-rose-100 hover:border-rose-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group bg-white/80 backdrop-blur-sm">
-                                <CardBody className="p-8 text-center relative">
+                                <Card.Content className="p-8 text-center relative">
                                     <div className={`${item.bgColor} rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6 mt-6 group-hover:scale-110 transition-transform shadow-md`}>
                                         <item.icon className={`h-8 w-8 ${item.color}`} />
                                     </div>
@@ -126,7 +126,7 @@ const AllBiodatas = () => {
                                     <p className="text-gray-600 leading-relaxed">
                                         {item.description}
                                     </p>
-                                </CardBody>
+                                </Card.Content>
                             </Card>
                         ))}
                     </div>
@@ -180,7 +180,7 @@ const AllBiodatas = () => {
                                 {/* Right Button Section */}
                                 <div className="flex flex-col sm:flex-row gap-4 lg:flex-col xl:flex-row">
                                     {/* Primary CTA Button */}
-                                    <Button className="group/btn relative px-10 py-6 bg-white text-rose-600 hover:bg-rose-50 font-bold text-lg rounded-2xl transition-all duration-300 transform hover:scale-110 hover:shadow-2xl overflow-hidden" >
+                                    <Button className="group/btn relative px-10 py-6 bg-white text-rose-600 hover:bg-rose-50 font-bold text-lg rounded-2xl transition-all duration-300 transform hover:scale-110 hover:shadow-2xl overflow-hidden">
                                         <Link href="/profile/biodatas/edit/new">
                                             {/* Button Background Effect */}
                                             <div className="absolute inset-0 bg-gradient-to-r from-rose-50 to-pink-50 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
@@ -238,7 +238,7 @@ const AllBiodatas = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                         {stats.map((stat, index) => (
                             <Card key={index} className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-white/80 backdrop-blur-sm group">
-                                <CardBody className="p-8 text-center relative overflow-hidden">
+                                <Card.Content className="p-8 text-center relative overflow-hidden">
                                     <div className={`${stat.bgColor} rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform shadow-lg`}>
                                         <stat.icon className={`h-8 w-8 ${stat.color}`} />
                                     </div>
@@ -250,7 +250,7 @@ const AllBiodatas = () => {
                                     <div className="text-gray-600 font-medium">
                                         {stat.label}
                                     </div>
-                                </CardBody>
+                                </Card.Content>
                             </Card>
                         ))}
                     </div>

@@ -1,104 +1,44 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Users, Heart, BookmarkCheck, ShoppingCart, Plus, TrendingUp, Eye, Star } from "lucide-react";
-import { Card, CardBody, CardHeader, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import { useProfileView } from "@/hooks/useProfileView";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useBiodataStatus } from "@/hooks/useBiodataStatus";
 import { BiodataStatusToggle } from "@/components/dashboard/BiodataStatusToggle";
 import { logger } from '@/services/logger';
-import { handleApiError } from '@/services/error-handler';
 
 export default function Dashboard() {
   const { user } = useRegularAuth();
   const { getProfileViewStats } = useProfileView();
-  const { favorites, getFavoriteCount } = useFavorites();
+  const { favorites, loading: favoritesLoading } = useFavorites();
+  const router = useRouter();
   const { statusInfo, loading: statusLoading, refetch: refetchStatus } = useBiodataStatus();
-  const [viewStats, setViewStats] = useState({
-    totalViews: 0,
-    recentViews: 0,
-    viewsThisMonth: 0
-  });
-  const [favoritesStats, setFavoritesStats] = useState({
-    totalFavorites: 0,
-    newThisWeek: 0
-  });
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [favoritesLoading, setFavoritesLoading] = useState(true);
 
-  const handleStatusChange = (newStatus: string) => {
+  // Profile view statistics
+  const { data: viewStats = { totalViews: 0, recentViews: 0, viewsThisMonth: 0 }, isLoading: statsLoading } = useQuery({
+    queryKey: ['view-stats', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const result = await getProfileViewStats();
+      return result.success && result.data ? result.data : { totalViews: 0, recentViews: 0, viewsThisMonth: 0 };
+    },
+  });
+
+  // Same visibility rules as /favorites/count, so the list length is the count
+  const totalFavorites = favorites.length;
+
+  const handleStatusChange = () => {
     // Refetch status info to get updated data
-    refetchStatus();
+    void refetchStatus();
   };
 
-  // Fetch profile view statistics
-  useEffect(() => {
-    const fetchViewStats = async () => {
-      try {
-        setStatsLoading(true);
-        const result = await getProfileViewStats();
-        if (result.success && result.data) {
-          setViewStats(result.data);
-        }
-      } catch (error) {
-        const appError = handleApiError(error, 'Dashboard');
-        logger.error('Failed to fetch view stats', appError, 'Dashboard');
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchViewStats();
-    }
-  }, [user]);
-
-  // Fetch favorites statistics
-  useEffect(() => {
-    const fetchFavoritesStats = async () => {
-      try {
-        setFavoritesLoading(true);
-        const totalCount = await getFavoriteCount();
-        setFavoritesStats({
-          totalFavorites: totalCount,
-          newThisWeek: 0 // We'll calculate this separately
-        });
-      } catch (error) {
-        const appError = handleApiError(error, 'Dashboard');
-        logger.error('Failed to fetch favorites stats', appError, 'Dashboard');
-      } finally {
-        setFavoritesLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchFavoritesStats();
-    }
-  }, [user]);
-
-  // Calculate new favorites this week when favorites array changes
-  useEffect(() => {
-    if (favorites.length >= 0) { // Changed to >= 0 to handle empty arrays
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-      const newThisWeek = favorites.filter(fav =>
-        new Date(fav.createdAt) >= oneWeekAgo
-      ).length;
-
-      setFavoritesStats(prev => {
-        // Only update if the value actually changed to prevent unnecessary re-renders
-        if (prev.newThisWeek !== newThisWeek) {
-          return {
-            ...prev,
-            newThisWeek
-          };
-        }
-        return prev;
-      });
-    }
-  }, [favorites]);
+  // Favorites added in the last 7 days (derived, so it can't race the count request)
+  const [oneWeekAgo] = useState(() => Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const newThisWeek = favorites.filter(fav => new Date(fav.createdAt).getTime() >= oneWeekAgo).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -116,7 +56,7 @@ export default function Dashboard() {
         {/* Connection Status Card */}
         <div className="mb-8">
           <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-2xl overflow-hidden">
-            <CardBody className="p-8 sm:p-10">
+            <Card.Content className="p-8 sm:p-10">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
                 <div className="space-y-6 flex-1">
                   <div className="flex items-center gap-4">
@@ -140,14 +80,14 @@ export default function Dashboard() {
                   <Button
                     size="lg"
                     className="bg-white text-blue-600 hover:bg-blue-50 shadow-xl font-bold px-4 py-4 text-lg rounded-2xl transition-all duration-300 hover:scale-105"
-                    onClick={() => logger.info('Buy more connections clicked', { userId: user?.id }, 'Dashboard')}
+                    onPress={() => logger.info('Buy more connections clicked', { userId: user?.id }, 'Dashboard')}
                   >
                     <Plus className="h-6 w-6" />
                     Buy More Connections
                   </Button>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 
@@ -169,7 +109,7 @@ export default function Dashboard() {
           )}
           {/* Profile Visits Card */}
           <Card className="bg-white/80 backdrop-blur-sm hover:bg-white/95 transition-all duration-500 border-0 shadow-xl hover:shadow-2xl group overflow-hidden">
-            <CardBody className="p-8">
+            <Card.Content className="p-8">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -205,12 +145,12 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Favorites Card */}
           <Card className="bg-white/80 backdrop-blur-sm hover:bg-white/95 transition-all duration-500 border-0 shadow-xl hover:shadow-2xl group overflow-hidden cursor-pointer">
-            <CardBody className="p-8" onClick={() => window.location.href = '/favorites'}>
+            <Card.Content className="p-8" onClick={() => router.push('/favorites')}>
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -222,7 +162,7 @@ export default function Dashboard() {
                       {favoritesLoading ? (
                         <div className="animate-pulse bg-rose-200 rounded h-3 w-8"></div>
                       ) : (
-                        `${favoritesStats.newThisWeek} new`
+                        `${newThisWeek} new`
                       )}
                     </span>
                   </div>
@@ -234,24 +174,24 @@ export default function Dashboard() {
                     {favoritesLoading ? (
                       <div className="animate-pulse bg-rose-200 rounded h-12 w-24"></div>
                     ) : (
-                      favoritesStats.totalFavorites
+                      totalFavorites
                     )}
                   </div>
                   <p className="text-slate-500 font-medium">
                     {favoritesLoading ? (
                       <div className="animate-pulse bg-gray-200 rounded h-4 w-32"></div>
                     ) : (
-                      `${favoritesStats.newThisWeek} added this week`
+                      `${newThisWeek} added this week`
                     )}
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           {/* Shortlisted Card */}
           {/* <Card className="bg-white/80 backdrop-blur-sm hover:bg-white/95 transition-all duration-500 border-0 shadow-xl hover:shadow-2xl group overflow-hidden">
-            <CardBody className="p-8">
+            <Card.Content className="p-8">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -269,7 +209,7 @@ export default function Dashboard() {
                   <p className="text-slate-500 font-medium">3 new shortlists</p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card> */}
         </div>
 
@@ -277,7 +217,7 @@ export default function Dashboard() {
 
         {/* Purchase History */}
         {/* <Card className="bg-white/70 backdrop-blur-sm border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="border-b border-slate-100 pb-4">
+          <Card.Header className="border-b border-slate-100 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
                 <ShoppingCart className="h-6 w-6 text-white" />
@@ -287,8 +227,8 @@ export default function Dashboard() {
                 <p className="text-slate-600">Your recent transactions</p>
               </div>
             </div>
-          </CardHeader>
-          <CardBody className="pt-6">
+          </Card.Header>
+          <Card.Content className="pt-6">
             <div className="space-y-4">
               {[
                 {
@@ -333,11 +273,11 @@ export default function Dashboard() {
               ))}
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100">
-              <Button variant="bordered" className="w-full text-slate-600 border-slate-200 hover:bg-slate-50">
+              <Button variant="outline" className="w-full text-slate-600 border-slate-200 hover:bg-slate-50">
                 View All Transactions
               </Button>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card> */}
       </div>
     </div>

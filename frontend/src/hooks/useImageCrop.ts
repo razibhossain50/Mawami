@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
-import { addToast } from '@heroui/react';
+import { toast } from "@heroui/react";
 
 export interface ImageCropResult {
   blob: Blob;
@@ -69,11 +69,7 @@ export function useImageCrop(options: UseImageCropOptions = {}) {
     // Validate file type
     if (!file.type.match(new RegExp(`^image/(${allowedTypes.map(type => type.split('/')[1]).join('|')})$`))) {
       const errorMsg = `Please upload only ${allowedTypes.map(type => type.split('/')[1].toUpperCase()).join(', ')} images.`;
-      addToast({
-        title: "Invalid File Type",
-        description: errorMsg,
-        color: "danger"
-      });
+      toast("Invalid File Type", { description: errorMsg, variant: "danger" });
       onError?.(errorMsg);
       return;
     }
@@ -81,11 +77,7 @@ export function useImageCrop(options: UseImageCropOptions = {}) {
     // Validate file size
     if (file.size > maxFileSize) {
       const errorMsg = `File size must be less than ${Math.round(maxFileSize / (1024 * 1024))}MB.`;
-      addToast({
-        title: "File Too Large",
-        description: errorMsg,
-        color: "danger"
-      });
+      toast("File Too Large", { description: errorMsg, variant: "danger" });
       onError?.(errorMsg);
       return;
     }
@@ -141,11 +133,7 @@ export function useImageCrop(options: UseImageCropOptions = {}) {
   // Handle crop confirmation
   const handleCropConfirm = useCallback(async () => {
     if (!imgRef.current || !completedCrop) {
-      addToast({
-        title: "Crop Error",
-        description: "Please select an area to crop.",
-        color: "danger"
-      });
+      toast("Crop Error", { description: "Please select an area to crop.", variant: "danger" });
       onError?.("Please select an area to crop.");
       return;
     }
@@ -172,19 +160,11 @@ export function useImageCrop(options: UseImageCropOptions = {}) {
       
       onCropComplete?.(result);
       
-      addToast({
-        title: "Image Cropped",
-        description: "Image has been cropped successfully.",
-        color: "success"
-      });
+      toast("Image Cropped", { description: "Image has been cropped successfully.", variant: "success" });
       
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to crop image';
-      addToast({
-        title: "Crop Failed",
-        description: errorMsg,
-        color: "danger"
-      });
+      toast("Crop Failed", { description: errorMsg, variant: "danger" });
       onError?.(errorMsg);
     } finally {
       setIsUploading(false);

@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Favorite } from './favorites.entity';
 import { User } from '../user/user.entity';
 import { Biodata } from '../biodata/biodata.entity';
+import { BiodataApprovalStatus } from '../biodata/enums/admin-approval-status.enum';
+import { BiodataVisibilityStatus } from '../biodata/enums/user-visibility-status.enum';
 
 @Injectable()
 export class FavoritesService {
@@ -16,8 +18,9 @@ export class FavoritesService {
 
   async addToFavorites(userId: number, biodataId: number): Promise<Favorite> {
     // Check if biodata exists
+    // Only publicly visible biodatas can be favorited
     const biodata = await this.biodataRepository.findOne({ where: { id: biodataId } });
-    if (!biodata) {
+    if (!biodata?.isVisibleToPublic()) {
       throw new NotFoundException('Biodata not found');
     }
 
@@ -52,11 +55,13 @@ export class FavoritesService {
   }
 
   async getUserFavorites(userId: number): Promise<Favorite[]> {
-    return await this.favoritesRepository.find({
+    const favorites = await this.favoritesRepository.find({
       where: { user: { id: userId } },
-      relations: ['biodata'],
+      relations: { biodata: true },
       order: { createdAt: 'DESC' }
     });
+    // Hide biodatas that were unapproved or made private after being favorited
+    return favorites.filter((favorite) => favorite.biodata?.isVisibleToPublic());
   }
 
   async isFavorite(userId: number, biodataId: number): Promise<boolean> {
@@ -67,8 +72,15 @@ export class FavoritesService {
   }
 
   async getFavoriteCount(userId: number): Promise<number> {
+    // Same visibility rule as getUserFavorites
     return await this.favoritesRepository.count({
-      where: { user: { id: userId } }
+      where: {
+        user: { id: userId },
+        biodata: {
+          biodataApprovalStatus: BiodataApprovalStatus.APPROVED,
+          biodataVisibilityStatus: BiodataVisibilityStatus.ACTIVE,
+        },
+      },
     });
   }
 }

@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRegularAuth } from '@/context/RegularAuthContext';
-import { Card, CardBody, Spinner } from '@heroui/react';
+import { Card, Spinner } from "@heroui/react";
 import { CheckCircle, XCircle } from 'lucide-react';
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
@@ -68,11 +68,11 @@ function GoogleCallbackContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-md">
-        <CardBody className="p-8 text-center">
+        <Card.Content className="p-8 text-center">
           <div className="space-y-4">
             {status === 'loading' && (
               <>
-                <Spinner size="lg" color="primary" />
+                <Spinner size="lg" color="accent" />
                 <h2 className="text-xl font-semibold text-gray-800">
                   Completing Sign In
                 </h2>
@@ -110,7 +110,7 @@ function GoogleCallbackContent() {
               </>
             )}
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
     </div>
   );
@@ -121,15 +121,15 @@ export default function GoogleCallbackPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-md">
-          <CardBody className="p-8 text-center">
+          <Card.Content className="p-8 text-center">
             <div className="space-y-4">
-              <Spinner size="lg" color="primary" />
+              <Spinner size="lg" color="accent" />
               <h2 className="text-xl font-semibold text-gray-800">
                 Loading...
               </h2>
               <p className="text-gray-600">Processing authentication...</p>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     }>

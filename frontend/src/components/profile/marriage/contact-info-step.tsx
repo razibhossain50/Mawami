@@ -1,5 +1,6 @@
 'use client';
-import { Input, Card, CardBody, Tooltip, Switch } from "@heroui/react";
+import { FormInput } from "@/components/ui/form-fields";
+import { Card, Tooltip, Switch } from "@heroui/react";
 import { Info } from "lucide-react";
 import { useState, useCallback } from "react";
 import { logger } from '@/services/logger';
@@ -69,11 +70,11 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
         <div className="grid gap-4">
           {/* Name with Admin Note */}
           <div className="col-span-2">
-            <Input
+            <FormInput
               label="Your full name"
               placeholder="Enter full name"
               value={(data.fullName as string) || ""}
-              onChange={(e) => updateData({ fullName: e.target.value })}
+              onValueChange={(value) => updateData({ fullName: value })}
               isRequired
               errorMessage={errors.fullName}
               isInvalid={!!errors.fullName}
@@ -104,15 +105,20 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
           {/* Profile Picture Visibility Toggle */}
           <div className="col-span-2">
             <Card className="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 hover:border-slate-300 transition-colors">
-              <CardBody className="p-4">
+              <Card.Content className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="text-sm font-medium text-foreground">
                         Make Profile Picture Public
                       </h4>
-                      <Tooltip content="When enabled, your profile picture will be visible to other users browsing biodatas">
-                        <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                      <Tooltip delay={200}>
+                        <Tooltip.Trigger tabIndex={0} aria-label="About profile picture visibility">
+                          <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>
+                          When enabled, your profile picture will be visible to other users browsing biodatas
+                        </Tooltip.Content>
                       </Tooltip>
                     </div>
                     <p className="text-xs text-slate-600">
@@ -129,29 +135,28 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
                       }`}>
                       {(data.profilePictureVisible as boolean) ? 'Public' : 'Private'}
                     </span>
-                    <Switch
-                      isSelected={(data.profilePictureVisible as boolean) || false}
-                      onValueChange={(value) => {
+                    <Switch isSelected={(data.profilePictureVisible as boolean) || false} onChange={(value) => {
                         updateData({ profilePictureVisible: value });
-                      }}
-                      color="success"
-                      size="md"
-                    />
+                      }} size="md" aria-label="Make profile picture public">
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
+                    </Switch>
                   </div>
                 </div>
-              </CardBody>
+              </Card.Content>
             </Card>
           </div>
 
           {/* Email */}
           <div className="col-span-2">
-            <Input
+            <FormInput
               className="col-span-2"
               type="email"
               label="Email"
               placeholder="Enter email address"
               value={(data.email as string) || ""}
-              onChange={(e) => updateData({ email: e.target.value })}
+              onValueChange={(value) => updateData({ email: value })}
               description="Only visible for premium users"
               isRequired
               errorMessage={errors.email}
@@ -161,12 +166,12 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
 
           {/* Guardian's Mobile */}
           <div className="col-span-2">
-            <Input
+            <FormInput
               type="tel"
               label="Guardian's Mobile Number"
               placeholder="Enter guardian's mobile number"
               value={(data.guardianMobile as string) || ""}
-              onChange={(e) => updateData({ guardianMobile: e.target.value })}
+              onValueChange={(value) => updateData({ guardianMobile: value })}
               description="Only visible for premium users"
               isRequired
               errorMessage={errors.guardianMobile}
@@ -176,12 +181,12 @@ export function ContactInfoStep({ data, errors, updateData }: ContactInfoStepPro
 
           {/* Own Mobile */}
           <div className="col-span-2">
-            <Input
+            <FormInput
               type="tel"
               label="Own Mobile Number"
               placeholder="Enter your mobile number"
               value={(data.ownMobile as string) || ""}
-              onChange={(e) => updateData({ ownMobile: e.target.value })}
+              onValueChange={(value) => updateData({ ownMobile: value })}
               description="Only visible for premium users"
               isRequired
               errorMessage={errors.ownMobile}

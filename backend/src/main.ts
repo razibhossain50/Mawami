@@ -58,25 +58,20 @@ async function bootstrap() {
     },
   });
 
-  // -----------------------------
-  // CORS setup - Production ready
-  // -----------------------------
-  console.log('Setting up CORS...');
-  console.log('FRONTEND_URL env:', process.env.FRONTEND_URL);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-
+  // CORS: production domains, local dev, plus FRONTEND_URL (comma-separated allowed)
   const allowedOrigins = [
     'https://mawami.com',
     'https://www.mawami.com',
     'http://localhost:3000',
     'http://localhost:3001',
-    process.env.FRONTEND_URL
-  ].filter(Boolean);
-
-  console.log('Allowed origins:', allowedOrigins);
+    ...(process.env.FRONTEND_URL ?? '')
+      .split(',')
+      .map((origin) => origin.trim().replace(/\/$/, ''))
+      .filter(Boolean),
+  ];
 
   app.enableCors({
-    origin: true, // Allow all origins for now to fix immediate issue
+    origin: allowedOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -89,20 +84,6 @@ async function bootstrap() {
     ],
     credentials: true,
     optionsSuccessStatus: 200,
-    preflightContinue: false,
-  });
-
-  // Add manual CORS headers as backup
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name');
-    res.header('Access-Control-Allow-Credentials', 'true');
-
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
-    next();
   });
 
   // Create super admin if not exists

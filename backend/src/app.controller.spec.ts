@@ -16,7 +16,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return "Finder app is running!"', () => {
-      expect(appController.getHello()).toBe('Hello Finder app!');
+      expect(appController.getHello()).toBe('Finder app is running!');
     });
   });
 });

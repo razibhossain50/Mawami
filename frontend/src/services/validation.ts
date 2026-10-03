@@ -31,9 +31,7 @@ export const imageFileSchema = z.object({
 // Biodata validation schemas
 export const basicInfoSchema = z.object({
   fullName: nameSchema,
-  biodataType: z.enum(['Male', 'Female', 'Groom', 'Bride'], {
-    required_error: 'Please select biodata type'
-  }),
+  biodataType: z.enum(['Male', 'Female', 'Groom', 'Bride'], { error: (iss) => (iss.input === undefined ? 'Please select biodata type' : undefined) }),
   maritalStatus: z.string().min(1, 'Marital status is required'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   height: z.string().min(1, 'Height is required'),
@@ -71,10 +69,10 @@ export const educationInfoSchema = z.object({
 export const familyInfoSchema = z.object({
   fatherName: nameSchema,
   fatherProfession: z.string().min(1, 'Father\'s profession is required'),
-  fatherAlive: z.enum(['Yes', 'No'], { required_error: 'Please specify if father is alive' }),
+  fatherAlive: z.enum(['Yes', 'No'], { error: (iss) => (iss.input === undefined ? 'Please specify if father is alive' : undefined) }),
   motherName: nameSchema,
   motherProfession: z.string().min(1, 'Mother\'s profession is required'),
-  motherAlive: z.enum(['Yes', 'No'], { required_error: 'Please specify if mother is alive' }),
+  motherAlive: z.enum(['Yes', 'No'], { error: (iss) => (iss.input === undefined ? 'Please specify if mother is alive' : undefined) }),
   brothersCount: z.number().min(0, 'Brothers count cannot be negative').max(20, 'Brothers count seems too high'),
   sistersCount: z.number().min(0, 'Sisters count cannot be negative').max(20, 'Sisters count seems too high'),
   familyDetails: z.string().max(1000, 'Family details must not exceed 1000 characters'),
@@ -209,7 +207,7 @@ export const validateForm = <T>(schema: z.ZodSchema<T>, data: unknown): {
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {};
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         const path = err.path.join('.');
         errors[path] = err.message;
       });

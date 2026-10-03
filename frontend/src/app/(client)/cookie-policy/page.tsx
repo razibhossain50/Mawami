@@ -1,5 +1,5 @@
 "use client";
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Cookie, Settings, Shield, Eye, Database, Bell } from "lucide-react";
 import Link from "next/link";
 
@@ -23,13 +23,13 @@ export default function CookiePolicy() {
         {/* Content */}
         <div className="space-y-8">
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Cookie className="h-6 w-6 text-amber-600" />
                 <h2 className="text-xl font-bold text-gray-800">What Are Cookies</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   Cookies are small text files that are placed on your device when you visit our website. 
@@ -40,17 +40,17 @@ export default function CookiePolicy() {
                   or "persistent" cookies (stored on your device for a longer period).
                 </p>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Settings className="h-6 w-6 text-blue-600" />
                 <h2 className="text-xl font-bold text-gray-800">How We Use Cookies</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>We use cookies for the following purposes:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
@@ -61,17 +61,17 @@ export default function CookiePolicy() {
                   <li><strong>Security Cookies:</strong> To protect against fraud and abuse</li>
                 </ul>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Eye className="h-6 w-6 text-green-600" />
                 <h2 className="text-xl font-bold text-gray-800">Types of Cookies We Use</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-6 text-gray-700">
                 <div>
                   <h3 className="font-semibold text-gray-800 mb-2">Essential Cookies</h3>
@@ -102,17 +102,17 @@ export default function CookiePolicy() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Database className="h-6 w-6 text-purple-600" />
                 <h2 className="text-xl font-bold text-gray-800">Third-Party Cookies</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   Some cookies on our website are set by third-party services that we use to enhance 
@@ -128,17 +128,17 @@ export default function CookiePolicy() {
                   These third-party services have their own privacy policies and cookie practices.
                 </p>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Shield className="h-6 w-6 text-rose-600" />
                 <h2 className="text-xl font-bold text-gray-800">Managing Your Cookie Preferences</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>You have several options for managing cookies:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
@@ -154,17 +154,17 @@ export default function CookiePolicy() {
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
+            <Card.Header className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Bell className="h-6 w-6 text-gray-600" />
                 <h2 className="text-xl font-bold text-gray-800">Updates to This Policy</h2>
               </div>
-            </CardHeader>
-            <CardBody className="p-6">
+            </Card.Header>
+            <Card.Content className="p-6">
               <div className="space-y-4 text-gray-700">
                 <p>
                   We may update this Cookie Policy from time to time to reflect changes in our practices 
@@ -178,7 +178,7 @@ export default function CookiePolicy() {
                   We encourage you to review this policy periodically to stay informed about how we use cookies.
                 </p>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
 

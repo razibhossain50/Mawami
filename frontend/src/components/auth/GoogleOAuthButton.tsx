@@ -13,23 +13,19 @@ export default function GoogleOAuthButton({ mode, className = "" }: GoogleOAuthB
   const handleGoogleAuth = () => {
     setIsLoading(true);
     // Redirect to backend Google OAuth endpoint
-    let backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
-    // Remove trailing slash if present
-    if (backendUrl.endsWith('/')) {
-      backendUrl = backendUrl.slice(0, -1);
-    }
-    window.location.href = `${backendUrl}/api/auth/google`;
+    // Full-page navigation to the backend (an absolute, cross-origin URL)
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+    window.location.assign(new URL('/api/auth/google', backendUrl).toString());
   };
 
   return (
     <Button
-      onClick={handleGoogleAuth}
-      isLoading={isLoading}
-      variant="bordered"
+      variant="outline"
+      onPress={handleGoogleAuth}
+      isPending={isLoading}
       className={`w-full border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-700 font-medium ${className}`}
       size="lg"
-      startContent={
-        !isLoading && (
+    >{!isLoading && (
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
@@ -48,9 +44,7 @@ export default function GoogleOAuthButton({ mode, className = "" }: GoogleOAuthB
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-        )
-      }
-    >
+        )}
       {isLoading ? `${mode === 'login' ? 'Signing in' : 'Signing up'} with Google...` : `Continue with Google`}
     </Button>
   );

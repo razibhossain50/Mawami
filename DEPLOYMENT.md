@@ -47,8 +47,9 @@ Set these in your Railway dashboard:
 - `NODE_ENV=production`
 - `FRONTEND_URL=https://your-frontend-vercel-url.vercel.app`
 - `DATABASE_URL=postgresql://postgres:password@host:port/database`
-- `JWT_SECRET=your-jwt-secret`
+- `JWT_SECRET=your-jwt-secret` (required — the API won't start without it; e.g. `openssl rand -base64 48`)
 - `JWT_EXPIRES_IN=1d`
+- `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `SUPERADMIN_NAME` (optional — creates the superadmin on first start if that account doesn't exist; never resets an existing password)
 - `GOOGLE_CLIENT_ID=your-google-client-id`
 - `GOOGLE_CLIENT_SECRET=your-google-client-secret`
 - `GOOGLE_CALLBACK_URL=https://your-backend-railway-url.up.railway.app/auth/google/callback`

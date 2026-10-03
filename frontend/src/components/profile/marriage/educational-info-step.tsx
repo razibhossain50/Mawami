@@ -1,4 +1,4 @@
-import { Input, Select, SelectItem } from "@heroui/react";
+import { FormInput, FormSelect } from "@/components/ui/form-fields";
 
 interface EducationalInfoStepProps {
   data: Record<string, unknown>;
@@ -19,112 +19,82 @@ export function EducationalInfoStep({ data, errors, updateData }: EducationalInf
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         {/* Education Medium */}
-        <Select
+        <FormSelect
           label="Your Education Medium"
           placeholder="Select Medium"
-          selectedKeys={data.educationMedium ? [data.educationMedium as string] : []}
-          onSelectionChange={(keys) => {
-            const keyArray = Array.from(keys);
-            const value = keyArray.length > 0 ? keyArray[0] as string : undefined;
-            console.log('🔄 Education medium selection changed:', { keys, value });
+          value={data.educationMedium ? (data.educationMedium as string) : null}
+          onValueChange={(selected) => {
+            const value = selected ?? undefined;
             updateData({ educationMedium: value });
           }}
           isRequired
           errorMessage={errors.educationMedium}
           isInvalid={!!errors.educationMedium}
-        >
-          <SelectItem key="Bangla">Bangla</SelectItem>
-          <SelectItem key="English">English</SelectItem>
-          <SelectItem key="Arabic">Arabic</SelectItem>
-          <SelectItem key="Others">Others</SelectItem>
-        </Select>
+          options={[{ value: "Bangla", label: "Bangla" }, { value: "English", label: "English" }, { value: "Arabic", label: "Arabic" }, { value: "Others", label: "Others" }]}
+        />
 
         {/* Highest Education Level */}
-        <Select
+        <FormSelect
           label="Highest Education Level"
           placeholder="Select Level"
-          selectedKeys={data.highestEducation ? [data.highestEducation as string] : []}
-          onSelectionChange={(keys) => {
-            const keyArray = Array.from(keys);
-            const value = keyArray.length > 0 ? keyArray[0] as string : undefined;
-            console.log('🔄 Highest education selection changed:', { keys, value });
+          value={data.highestEducation ? (data.highestEducation as string) : null}
+          onValueChange={(selected) => {
+            const value = selected ?? undefined;
             updateData({ highestEducation: value });
           }}
           isRequired
           errorMessage={errors.highestEducation}
           isInvalid={!!errors.highestEducation}
-        >
-          <SelectItem key="Below SSC">Below SSC</SelectItem>
-          <SelectItem key="SSC">SSC</SelectItem>
-          <SelectItem key="HSC">HSC</SelectItem>
-          <SelectItem key="Diploma">Diploma</SelectItem>
-          <SelectItem key="Diploma Running">Diploma Running</SelectItem>
-          <SelectItem key="Honours">Honours</SelectItem>
-          <SelectItem key="Honours Running">Honours Running</SelectItem>
-          <SelectItem key="Masters">Masters</SelectItem>
-          <SelectItem key="Masters Running">Masters Running</SelectItem>
-          <SelectItem key="PHD">PHD</SelectItem>
-        </Select>
+          options={[{ value: "Below SSC", label: "Below SSC" }, { value: "SSC", label: "SSC" }, { value: "HSC", label: "HSC" }, { value: "Diploma", label: "Diploma" }, { value: "Diploma Running", label: "Diploma Running" }, { value: "Honours", label: "Honours" }, { value: "Honours Running", label: "Honours Running" }, { value: "Masters", label: "Masters" }, { value: "Masters Running", label: "Masters Running" }, { value: "PHD", label: "PHD" }]}
+        />
 
         {/* Institute Name */}
-        <Input
+        <FormInput
           label="Institute or University Name"
           placeholder="Enter institute or university name"
           value={(data.instituteName as string) || ""}
-          onChange={(e) => updateData({ instituteName: e.target.value })}
+          onValueChange={(value) => updateData({ instituteName: value })}
           isRequired
           errorMessage={errors.instituteName}
           isInvalid={!!errors.instituteName}
         />
 
         {/* Subject */}
-        <Input
+        <FormInput
           label="Which subject do you study"
           placeholder="Enter your subject/major"
           value={(data.subject as string) || ""}
-          onChange={(e) => updateData({ subject: e.target.value })}
+          onValueChange={(value) => updateData({ subject: value })}
           isRequired
           errorMessage={errors.subject}
           isInvalid={!!errors.subject}
         />
 
         {/* Passing Year */}
-        <Input
+        <FormInput
           label="Passing Year"
           placeholder="Enter passing year"
           value={(data.passingYear as string) || ""}
-          onChange={(e) => updateData({ passingYear: e.target.value })}
+          onValueChange={(value) => updateData({ passingYear: value })}
           isRequired
           errorMessage={errors.passingYear}
           isInvalid={!!errors.passingYear}
         />
 
         {/* Result */}
-        <Select
+        <FormSelect
           label="Result"
           placeholder="Select Result"
-          selectedKeys={data.result ? [data.result as string] : []}
-          onSelectionChange={(keys) => {
-            const keyArray = Array.from(keys);
-            const value = keyArray.length > 0 ? keyArray[0] as string : undefined;
-            console.log('🔄 Result selection changed:', { keys, value });
+          value={data.result ? (data.result as string) : null}
+          onValueChange={(selected) => {
+            const value = selected ?? undefined;
             updateData({ result: value });
           }}
           isRequired
           errorMessage={errors.result}
           isInvalid={!!errors.result}
-        >
-          <SelectItem key="Not Available">Not Available</SelectItem>
-          <SelectItem key="A+">A+</SelectItem>
-          <SelectItem key="A">A</SelectItem>
-          <SelectItem key="A-">A-</SelectItem>
-          <SelectItem key="B+">B+</SelectItem>
-          <SelectItem key="B">B</SelectItem>
-          <SelectItem key="B-">B-</SelectItem>
-          <SelectItem key="C+">C+</SelectItem>
-          <SelectItem key="C">C</SelectItem>
-          <SelectItem key="D">D</SelectItem>
-        </Select>
+          options={[{ value: "Not Available", label: "Not Available" }, { value: "A+", label: "A+" }, { value: "A", label: "A" }, { value: "A-", label: "A-" }, { value: "B+", label: "B+" }, { value: "B", label: "B" }, { value: "B-", label: "B-" }, { value: "C+", label: "C+" }, { value: "C", label: "C" }, { value: "D", label: "D" }]}
+        />
       </div>
     </div>
   );

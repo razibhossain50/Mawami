@@ -1,19 +1,11 @@
 "use client";
+import { FormInput } from "@/components/ui/form-fields";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { 
-  Card, 
-  CardBody, 
-  CardHeader, 
-  Input, 
-  Button, 
-  Divider,
-  Spinner,
-  Chip
-} from "@heroui/react";
+import { Card, Button, Separator, Spinner, Chip } from "@heroui/react";
 import { Eye, EyeOff, User, Lock, Sparkles, CheckCircle } from "lucide-react";
 import { useRegularAuth } from "@/context/RegularAuthContext";
 import GoogleOAuthButton from "./GoogleOAuthButton";
@@ -48,7 +40,7 @@ export default function SignupFormRegular() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isValid },
   } = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
@@ -61,9 +53,11 @@ export default function SignupFormRegular() {
     },
   });
 
-  const password = watch("password");
-  const fullName = watch("fullName");
-  const email = watch("email");
+  // useWatch subscribes properly (watch() can't be memoized by the React Compiler)
+  const [password, fullName, email, confirmPassword] = useWatch({
+    control,
+    name: ["password", "fullName", "email", "confirmPassword"],
+  });
 
 
 
@@ -103,7 +97,7 @@ export default function SignupFormRegular() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card className="w-full shadow-2xl border-0 bg-white/80 backdrop-blur-md">
-          <CardHeader className="flex flex-col items-center justify-center text-center pb-4 pt-8">
+          <Card.Header className="flex flex-col items-center justify-center text-center pb-4 pt-8">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold text-gray-800">
                 Join Mawami
@@ -112,65 +106,58 @@ export default function SignupFormRegular() {
                 Create your account to start your journey
               </p>
             </div>
-          </CardHeader>
+          </Card.Header>
 
-          <CardBody className="px-6 pb-6">
+          <Card.Content className="px-6 pb-6">
             {error && (
               <div className="mb-4">
                 <Chip
                   color="danger"
-                  variant="flat"
+                  variant="soft"
                   className="w-full p-3 h-auto flex-wrap whitespace-normal"
-                  startContent={<Sparkles className="w-4 h-4" />}
-                >
+                >{<Sparkles className="w-4 h-4" />}
                   {error}
                 </Chip>
               </div>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              <Input
-                {...register("fullName")}
+              <FormInput variant="bordered"
+                inputProps={register("fullName")}
                 label="Full Name"
                 placeholder="Enter your full name"
                 startContent={<User className="w-4 h-4 text-gray-400" />}
                 endContent={
                   fullName && fullName.length >= 2 ? (
-                    <CheckCircle className="w-4 h-4 text-success-500" />
+                    <CheckCircle className="w-4 h-4 text-green-500" />
                   ) : null
                 }
-                variant="bordered"
                 isInvalid={!!errors.fullName}
                 errorMessage={errors.fullName?.message}
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                }}
+                inputClassName="text-sm"
+                groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
-              <Input
-                {...register("email")}
+              <FormInput variant="bordered"
+                inputProps={register("email")}
                 type="email"
                 label="Email"
                 placeholder="Enter your email address"
                 startContent={<User className="w-4 h-4 text-gray-400" />}
                 endContent={
                   email && !errors.email ? (
-                    <CheckCircle className="w-4 h-4 text-success-500" />
+                    <CheckCircle className="w-4 h-4 text-green-500" />
                   ) : null
                 }
-                variant="bordered"
                 isInvalid={!!errors.email}
                 errorMessage={errors.email?.message}
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                }}
+                inputClassName="text-sm"
+                groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
               <div className="space-y-2">
-                <Input
-                  {...register("password")}
+                <FormInput variant="bordered"
+                  inputProps={register("password")}
                   label="Password"
                   placeholder="Create a strong password"
                   startContent={<Lock className="w-4 h-4 text-gray-400" />}
@@ -188,13 +175,10 @@ export default function SignupFormRegular() {
                     </button>
                   }
                   type={isVisible ? "text" : "password"}
-                  variant="bordered"
                   isInvalid={!!errors.password}
                   errorMessage={errors.password?.message}
-                  classNames={{
-                    input: "text-sm",
-                    inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                  }}
+                  inputClassName="text-sm"
+                  groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
                 />
                 
                 {password && (
@@ -225,15 +209,15 @@ export default function SignupFormRegular() {
                 )}
               </div>
 
-              <Input
-                {...register("confirmPassword")}
+              <FormInput variant="bordered"
+                inputProps={register("confirmPassword")}
                 label="Confirm Password"
                 placeholder="Confirm your password"
                 startContent={<Lock className="w-4 h-4 text-gray-400" />}
                 endContent={
                   <>
-                    {watch("confirmPassword") && !errors.confirmPassword ? (
-                      <CheckCircle className="w-4 h-4 text-success-500" />
+                    {confirmPassword && !errors.confirmPassword ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
                     ) : null}
                     <button
                       className="focus:outline-none ml-2"
@@ -249,22 +233,18 @@ export default function SignupFormRegular() {
                   </>
                 }
                 type={isConfirmVisible ? "text" : "password"}
-                variant="bordered"
                 isInvalid={!!errors.confirmPassword}
                 errorMessage={errors.confirmPassword?.message}
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "border-gray-200 hover:border-primary-300 focus-within:border-primary-500",
-                }}
+                inputClassName="text-sm"
+                groupClassName="border-gray-200 hover:border-blue-300 focus-within:border-blue-500"
               />
 
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold py-3 text-base hover:from-pink-600 hover:to-purple-600 transition-all duration-200"
                 size="lg"
-                isLoading={isLoading}
+                isPending={isLoading}
                 isDisabled={!isValid}
-                spinner={<Spinner size="sm" color="white" />}
               >
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
@@ -272,7 +252,7 @@ export default function SignupFormRegular() {
 
             <div className="mt-6">
               <div className="relative">
-                <Divider className="my-4" />
+                <Separator className="my-4" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="bg-white px-3 text-sm text-gray-500">
                     or continue with
@@ -285,7 +265,7 @@ export default function SignupFormRegular() {
               </div>
 
               <div className="relative mt-6">
-                <Divider className="my-4" />
+                <Separator className="my-4" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="bg-white px-3 text-sm text-gray-500">
                     Already have an account?
@@ -296,7 +276,7 @@ export default function SignupFormRegular() {
               <div className="text-center mt-4">
                 <Link href="/auth/login">
                   <Button
-                    variant="light"
+                    variant="ghost"
                     className="text-pink-600 hover:text-pink-700 font-medium"
                   >
                     Sign in instead
@@ -304,7 +284,7 @@ export default function SignupFormRegular() {
                 </Link>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         <div className="text-center mt-6">

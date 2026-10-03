@@ -63,7 +63,7 @@ const LoginForm = () => {
       localStorage.setItem('admin_user_access_token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
 
-      // Also set cookie for middleware
+      // Also set cookie for the proxy (src/proxy.ts)
       document.cookie = `admin_user_access_token=${data.access_token}; path=/; max-age=86400; secure; samesite=strict`
 
       // Redirect to intended page or admin dashboard

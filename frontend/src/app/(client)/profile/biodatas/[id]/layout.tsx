@@ -7,7 +7,10 @@ interface ProfileLayoutProps {
 
 async function getProfile(id: string) {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/biodatas/${id}`, {
+        // Server-side fetch: inside Docker the public URL (localhost:3001) isn't reachable,
+        // so prefer the internal service URL when one is configured
+        const apiBase = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+        const response = await fetch(`${apiBase}/api/biodatas/${id}`, {
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -53,7 +56,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         const isFemale = profile.biodataType?.toLowerCase() === 'female' ||
             profile.biodataType?.toLowerCase() === 'bride';
 
-        if (profile.profilePicture) {
+        // Only use the photo when the owner made it public (it ends up in link previews)
+        if (profile.profilePicture && profile.profilePictureVisible) {
             // If it's a relative URL, make it absolute
             if (profile.profilePicture.startsWith('/')) {
                 return `${baseUrl}${profile.profilePicture}`;

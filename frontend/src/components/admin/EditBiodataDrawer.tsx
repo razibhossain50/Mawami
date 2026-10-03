@@ -1,16 +1,14 @@
 "use client"
+import { FormInput, FormTextarea, FormSelect, FormDatePicker } from "@/components/ui/form-fields";
 import React from "react";
-import {
-    Drawer, DrawerContent, DrawerHeader, DrawerBody, DrawerFooter,
-    Input, Button, Select, SelectItem, Textarea, Card, CardBody, CardHeader, Checkbox, DatePicker, Tooltip, Slider, Switch
-} from "@heroui/react";
-import { parseDate } from "@internationalized/date";
+import { Drawer, Button, Card, Checkbox, Tooltip, Switch, toast } from "@heroui/react";
+import { AgeRangeSlider } from "@/components/ui/age-range-slider";
 import { Info, Upload, Trash2 } from "lucide-react";
 import { LocationSelector } from '@/components/form/LocationSelector';
 import { logger } from '@/services/logger';
 import { handleApiError } from '@/services/error-handler';
 import { adminApi } from '@/services/api-client';
-import { useToast } from '@/context/ToastContext';
+import { ageFromDob } from '@/services/utils';
 import { FileUploadResponse } from '@/types/api';
 import { ImageUploadWithCrop } from '@/components/common/ImageUploadWithCrop';
 import { ImageCropResult } from '@/hooks/useImageCrop';
@@ -45,12 +43,12 @@ export default function EditBiodataDrawer({
     const [error, setError] = React.useState<string | null>(null);
     const [touchedFields, setTouchedFields] = React.useState<Set<string>>(new Set());
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = React.useState(false);
-    const [calculatedAge, setCalculatedAge] = React.useState<number | null>(null);
     const [isUploading, setIsUploading] = React.useState(false);
-    const { addToast } = useToast();
 
-    // Initialize form data when selectedBiodata changes
-    React.useEffect(() => {
+    // Re-initialize the form when selectedBiodata changes (during render, not in an effect)
+    const [initializedFor, setInitializedFor] = React.useState<typeof selectedBiodata | undefined>(undefined);
+    if (initializedFor !== selectedBiodata) {
+        setInitializedFor(selectedBiodata);
         setTouchedFields(new Set());
         setHasAttemptedSubmit(false);
 
@@ -117,67 +115,12 @@ export default function EditBiodataDrawer({
                 biodataVisibilityStatus: 'active'
             });
         }
-    }, [selectedBiodata]);
+    }
 
     // Cleanup object URLs to prevent memory leaks
 
-    // Age calculation effect
-    React.useEffect(() => {
-        if (editFormData.dateOfBirth && typeof editFormData.dateOfBirth === 'string' && editFormData.dateOfBirth.trim() !== '') {
-            try {
-                const dob = new Date(editFormData.dateOfBirth);
-                const today = new Date();
-
-                // Check if the date is valid
-                if (isNaN(dob.getTime())) {
-                    console.log('❌ Invalid date format');
-                    setCalculatedAge(null);
-                    setEditFormData(prev => ({ ...prev, age: undefined }));
-                    return;
-                }
-
-                // Check if the date is in the future
-                if (dob > today) {
-                    console.log('❌ Date of birth cannot be in the future');
-                    setCalculatedAge(null);
-                    setEditFormData(prev => ({ ...prev, age: undefined }));
-                    return;
-                }
-
-                let age = today.getFullYear() - dob.getFullYear();
-                const monthDiff = today.getMonth() - dob.getMonth();
-
-                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-                    age--;
-                }
-
-                // Check for reasonable age range
-                if (age < 0 || age > 120) {
-                    console.log('❌ Age is outside reasonable range:', age);
-                    setCalculatedAge(null);
-                    setEditFormData(prev => ({ ...prev, age: undefined }));
-                    return;
-                }
-
-                setCalculatedAge(age);
-                // Update age in form data only if it's different and valid
-                if (editFormData.age !== age && age >= 0) {
-                    console.log(`📅 Age calculated from date of birth: ${age} years`);
-                    setEditFormData(prev => ({ ...prev, age }));
-                }
-            } catch (error) {
-                console.log('❌ Error parsing date:', error);
-                setCalculatedAge(null);
-                setEditFormData(prev => ({ ...prev, age: undefined }));
-            }
-        } else {
-            // Clear calculated age and form age when date of birth is empty
-            setCalculatedAge(null);
-            if (editFormData.age !== undefined) {
-                setEditFormData(prev => ({ ...prev, age: undefined }));
-            }
-        }
-    }, [editFormData.dateOfBirth]);
+    // Age is derived from the date of birth
+    const calculatedAge = ageFromDob(editFormData.dateOfBirth);
 
     // Handle save biodata (create or update)
     const handleSaveBiodata = async () => {
@@ -259,7 +202,7 @@ export default function EditBiodataDrawer({
         if (missingFields.length > 0) {
             const errorMessage = `Please fill the following required fields: ${missingFields.join(', ')}`;
             setError(errorMessage);
-            addToast(errorMessage, 'error');
+            toast.danger(errorMessage);
             console.log('❌ Missing fields:', missingFields);
             console.log('📋 Current form data:', {
                 permanentDivision: editFormData.permanentDivision,
@@ -298,7 +241,7 @@ export default function EditBiodataDrawer({
                 await adminApi.put(`/biodatas/${selectedBiodata.id}`, cleanData);
 
                 // Show success toast
-                addToast('Biodata updated successfully!', 'success');
+                toast.success('Biodata updated successfully!');
 
                 // Call the parent callback to update the list
                 onBiodataUpdated({ ...selectedBiodata, ...editFormData });
@@ -342,7 +285,7 @@ export default function EditBiodataDrawer({
                 const newBiodata = await adminApi.post('/biodatas', cleanData) as Biodata;
 
                 // Show success toast
-                addToast('Biodata created successfully!', 'success');
+                toast.success('Biodata created successfully!');
 
                 // Call the parent callback to add to the list
                 if (onBiodataCreated) {
@@ -380,7 +323,7 @@ export default function EditBiodataDrawer({
             });
 
             setError(errorMessage);
-            addToast(`Failed to ${action} biodata: ` + errorMessage, 'error');
+            toast.danger(`Failed to ${action} biodata: ` + errorMessage);
         } finally {
             setIsUpdatingBiodata(false);
         }
@@ -523,7 +466,7 @@ export default function EditBiodataDrawer({
             setEditFormData(prev => ({ ...prev, profilePicture: uploadResult.url }));
 
             logger.debug('File uploaded successfully', uploadResult, 'EditBiodataDrawer');
-            addToast('Profile picture uploaded successfully!', 'success');
+            toast.success('Profile picture uploaded successfully!');
         } catch (error) {
             const appError = handleApiError(error, 'EditBiodataDrawer');
             console.error('❌ Upload failed:', {
@@ -531,22 +474,24 @@ export default function EditBiodataDrawer({
                 originalError: error
             });
             logger.error('Upload error', appError, 'EditBiodataDrawer');
-            addToast(`Failed to upload file: ${appError.message}`, 'error');
+            toast.danger(`Failed to upload file: ${appError.message}`);
             throw error; // Re-throw to let the hook handle the toast
         } finally {
             setIsUploading(false);
         }
-    }, [addToast]);
+    }, []);
 
     // Handle remove profile picture
     const handleRemoveProfilePicture = React.useCallback(() => {
         setEditFormData(prev => ({ ...prev, profilePicture: null }));
-        addToast('Profile picture removed successfully', 'success');
+        toast.success('Profile picture removed successfully');
         logger.debug('Profile picture removed', {}, 'EditBiodataDrawer');
-    }, [addToast]);
+    }, []);
 
     const handleClose = () => {
-        setEditFormData({});
+        // Re-initialize from selectedBiodata on the next open (even for the same biodata);
+        // keeping the form data avoids an empty flash during the close animation
+        setInitializedFor(undefined);
         setError(null);
         setIsUpdatingBiodata(false);
         setTouchedFields(new Set());
@@ -556,133 +501,98 @@ export default function EditBiodataDrawer({
     };
 
     return (
-        <Drawer
-            isOpen={isOpen}
-            onClose={handleClose}
-            size="5xl"
-            placement="right"
-        >
-            <DrawerContent>
-                <DrawerHeader className="flex flex-col gap-1">
+        <Drawer.Backdrop isOpen={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+          <Drawer.Content placement="right">
+            {/* v3 drawers default to w-96; keep the wide (5xl) editing panel */}
+            <Drawer.Dialog className="sm:w-[64rem] max-w-[95vw]">
+                <Drawer.Header className="flex flex-col gap-1">
                     <h2 className="text-2xl font-bold text-foreground">
                         {selectedBiodata ? 'Edit Biodata' : 'Create New Biodata'}
                     </h2>
-                    <p className="text-sm text-default-500">
+                    <p className="text-sm text-muted">
                         {selectedBiodata
                             ? `Editing biodata for ${selectedBiodata.fullName} (ID: #${selectedBiodata.id})`
                             : 'Fill in the details to create a new biodata'
                         }
                     </p>
                     {error && (
-                        <div className="text-sm text-danger bg-danger-50 p-2 rounded-md">
+                        <div className="text-sm text-danger bg-red-50 p-2 rounded-md">
                             {error}
                         </div>
                     )}
-                </DrawerHeader>
-                <DrawerBody className="gap-6">
+                </Drawer.Header>
+                <Drawer.Body className="gap-6">
                     <div className="space-y-6">
                         {/* Personal Information Section - Matches personal-info-step.tsx */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-foreground border-b border-divider pb-2">
+                            <h3 className="text-lg font-semibold text-foreground border-b border-separator pb-2">
                                 Personal Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* 1. Religion */}
-                                <Select
-                                    label="Religion"
-                                    placeholder="Select Religion"
-                                    selectedKeys={editFormData.religion ? [editFormData.religion] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Religion"
+                                  placeholder="Select Religion"
+                                  value={editFormData.religion ? editFormData.religion as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, religion: selectedKey }));
                                         markFieldAsTouched('religion');
                                     }}
-                                    onClose={() => markFieldAsTouched('religion')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('religion', !!editFormData.religion?.trim()) ? "Religion is required" : ""}
-                                    isInvalid={shouldShowValidationError('religion', !!editFormData.religion?.trim())}
-                                >
-                                    <SelectItem key="Islam">Islam</SelectItem>
-                                    <SelectItem key="Christianity">Christianity</SelectItem>
-                                    <SelectItem key="Hinduism">Hinduism</SelectItem>
-                                    <SelectItem key="Buddhism">Buddhism</SelectItem>
-                                    <SelectItem key="Other">Other</SelectItem>
-                                </Select>
+                                  onClose={() => markFieldAsTouched('religion')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('religion', !!editFormData.religion?.trim()) ? "Religion is required" : ""}
+                                  isInvalid={shouldShowValidationError('religion', !!editFormData.religion?.trim())}
+                                  options={[{ value: "Islam", label: "Islam" }, { value: "Christianity", label: "Christianity" }, { value: "Hinduism", label: "Hinduism" }, { value: "Buddhism", label: "Buddhism" }, { value: "Other", label: "Other" }]}
+                                />
 
                                 {/* 2. Biodata Type */}
-                                <Select
-                                    label="Biodata Type"
-                                    placeholder="Select Type"
-                                    selectedKeys={editFormData.biodataType ? [editFormData.biodataType] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Biodata Type"
+                                  placeholder="Select Type"
+                                  value={editFormData.biodataType ? editFormData.biodataType as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, biodataType: selectedKey }));
                                         markFieldAsTouched('biodataType');
                                     }}
-                                    onClose={() => markFieldAsTouched('biodataType')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('biodataType', !!editFormData.biodataType?.trim()) ? "Biodata type is required" : ""}
-                                    isInvalid={shouldShowValidationError('biodataType', !!editFormData.biodataType?.trim())}
-                                >
-                                    <SelectItem key="Male">Male</SelectItem>
-                                    <SelectItem key="Female">Female</SelectItem>
-                                </Select>
+                                  onClose={() => markFieldAsTouched('biodataType')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('biodataType', !!editFormData.biodataType?.trim()) ? "Biodata type is required" : ""}
+                                  isInvalid={shouldShowValidationError('biodataType', !!editFormData.biodataType?.trim())}
+                                  options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]}
+                                />
 
                                 {/* 3. Marital Status */}
-                                <Select
-                                    label="Marital Status"
-                                    placeholder="Select Status"
-                                    selectedKeys={editFormData.maritalStatus ? [editFormData.maritalStatus] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Marital Status"
+                                  placeholder="Select Status"
+                                  value={editFormData.maritalStatus ? editFormData.maritalStatus as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, maritalStatus: selectedKey }));
                                         markFieldAsTouched('maritalStatus');
                                     }}
-                                    onClose={() => markFieldAsTouched('maritalStatus')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('maritalStatus', !!editFormData.maritalStatus?.trim()) ? "Marital status is required" : ""}
-                                    isInvalid={shouldShowValidationError('maritalStatus', !!editFormData.maritalStatus?.trim())}
-                                >
-                                    <SelectItem key="Married">Married</SelectItem>
-                                    <SelectItem key="Unmarried">Unmarried</SelectItem>
-                                    <SelectItem key="Divorced">Divorced</SelectItem>
-                                    <SelectItem key="Widow">Widow</SelectItem>
-                                    <SelectItem key="Widower">Widower</SelectItem>
-                                </Select>
+                                  onClose={() => markFieldAsTouched('maritalStatus')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('maritalStatus', !!editFormData.maritalStatus?.trim()) ? "Marital status is required" : ""}
+                                  isInvalid={shouldShowValidationError('maritalStatus', !!editFormData.maritalStatus?.trim())}
+                                  options={[{ value: "Married", label: "Married" }, { value: "Unmarried", label: "Unmarried" }, { value: "Divorced", label: "Divorced" }, { value: "Widow", label: "Widow" }, { value: "Widower", label: "Widower" }]}
+                                />
 
                                 {/* 4. Date of Birth */}
                                 <div className="space-y-2.5">
-                                    <DatePicker
+                                    <FormDatePicker
                                         label="Date of Birth"
-                                        value={(() => {
-                                            try {
-                                                return editFormData.dateOfBirth && typeof editFormData.dateOfBirth === 'string' && editFormData.dateOfBirth.trim()
-                                                    ? parseDate(editFormData.dateOfBirth as string) as any
-                                                    : null;
-                                            } catch (error) {
-                                                console.log('❌ Error parsing date for DatePicker:', error);
-                                                return null;
-                                            }
-                                        })()}
-                                        onChange={(date) => {
-                                            if (date) {
-                                                const dateString = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-                                                setEditFormData(prev => ({ ...prev, dateOfBirth: dateString }));
-                                            } else {
-                                                setEditFormData(prev => ({ ...prev, dateOfBirth: "" }));
-                                            }
+                                        value={editFormData.dateOfBirth || ''}
+                                        onValueChange={(dateString) => {
+                                            setEditFormData(prev => ({ ...prev, dateOfBirth: dateString, age: ageFromDob(dateString) ?? undefined }));
                                             markFieldAsTouched('dateOfBirth');
                                         }}
-                                        maxValue={parseDate(new Date().toISOString().split('T')[0]) as any}
-                                        showMonthAndYearPickers
+                                        maxValue={new Date().toISOString().slice(0, 10)}
                                         isRequired
                                         errorMessage={shouldShowValidationError('dateOfBirth', !!editFormData.dateOfBirth?.trim()) ? "Date of birth is required" : ""}
                                         isInvalid={shouldShowValidationError('dateOfBirth', !!editFormData.dateOfBirth?.trim())}
-                                        variant="flat"
-                                        granularity="day"
                                     />
                                     {/* Age Display */}
                                     {calculatedAge !== null && (
@@ -693,22 +603,20 @@ export default function EditBiodataDrawer({
                                 </div>
 
                                 {/* 5. Height */}
-                                <Select
-                                    label="Height"
-                                    placeholder="Select Height"
-                                    selectedKeys={editFormData.height ? [editFormData.height] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Height"
+                                  placeholder="Select Height"
+                                  value={editFormData.height ? editFormData.height as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, height: selectedKey }));
                                         markFieldAsTouched('height');
                                     }}
-                                    onClose={() => markFieldAsTouched('height')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('height', !!editFormData.height?.trim()) ? "Height is required" : ""}
-                                    isInvalid={shouldShowValidationError('height', !!editFormData.height?.trim())}
-                                >
-                                    {[
+                                  onClose={() => markFieldAsTouched('height')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('height', !!editFormData.height?.trim()) ? "Height is required" : ""}
+                                  isInvalid={shouldShowValidationError('height', !!editFormData.height?.trim())}
+                                  options={[
                                         { key: 'below-4', label: 'Below 4 feet' },
                                         { key: '4.0', label: '4\'0"' },
                                         { key: '4.1', label: '4\'1"' },
@@ -748,102 +656,83 @@ export default function EditBiodataDrawer({
                                         { key: '6.11', label: '6\'11"' },
                                         { key: '7.0', label: '7\'0"' },
                                         { key: 'upper-7', label: 'Upper 7 feet' }
-                                    ].map((item) => (
-                                        <SelectItem key={item.key} textValue={item.label}>
-                                            {item.label}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                    ].map((item) => ({ value: String(item.key), label: item.label }))}
+                                />
 
                                 {/* 6. Weight */}
-                                <Input
+                                <FormInput variant="bordered"
                                     label="Weight"
                                     type="number"
                                     placeholder="Enter weight"
                                     value={editFormData.weight?.toString() || ''}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
+                                    onValueChange={(value) => {
                                         setEditFormData(prev => ({ ...prev, weight: value ? parseInt(value) || undefined : undefined }));
                                     }}
-                                    onBlur={() => markFieldAsTouched('weight')}
                                     endContent={<span className="text-slate-500 text-sm">kg</span>}
-                                    variant="bordered"
                                     isRequired
                                     errorMessage={shouldShowValidationError('weight', !!(editFormData.weight && editFormData.weight > 0)) ? "Weight is required" : ""}
                                     isInvalid={shouldShowValidationError('weight', !!(editFormData.weight && editFormData.weight > 0))}
+                                    inputProps={{ onBlur: () => markFieldAsTouched('weight') }}
                                 />
 
                                 {/* 7. Complexion */}
-                                <Select
-                                    label="Complexion"
-                                    placeholder="Select Complexion"
-                                    selectedKeys={editFormData.complexion ? [editFormData.complexion] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Complexion"
+                                  placeholder="Select Complexion"
+                                  value={editFormData.complexion ? editFormData.complexion as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, complexion: selectedKey }));
                                         markFieldAsTouched('complexion');
                                     }}
-                                    onClose={() => markFieldAsTouched('complexion')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('complexion', !!editFormData.complexion?.trim()) ? "Complexion is required" : ""}
-                                    isInvalid={shouldShowValidationError('complexion', !!editFormData.complexion?.trim())}
-                                >
-                                    {['Black', 'Dusky', 'Wheatish', 'Fair', 'Very Fair'].map((item) => (
-                                        <SelectItem key={item} textValue={item}>
-                                            {item}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                  onClose={() => markFieldAsTouched('complexion')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('complexion', !!editFormData.complexion?.trim()) ? "Complexion is required" : ""}
+                                  isInvalid={shouldShowValidationError('complexion', !!editFormData.complexion?.trim())}
+                                  options={['Black', 'Dusky', 'Wheatish', 'Fair', 'Very Fair'].map((item) => ({ value: String(item), label: item }))}
+                                />
 
                                 {/* 8. Profession */}
-                                <Input
+                                <FormInput variant="bordered"
                                     label="Profession"
                                     placeholder="Enter your profession"
                                     value={editFormData.profession || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, profession: e.target.value }))}
-                                    onBlur={() => markFieldAsTouched('profession')}
-                                    variant="bordered"
+                                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, profession: value }))}
                                     isRequired
                                     errorMessage={shouldShowValidationError('profession', !!editFormData.profession?.trim()) ? "Profession is required" : ""}
                                     isInvalid={shouldShowValidationError('profession', !!editFormData.profession?.trim())}
+                                    inputProps={{ onBlur: () => markFieldAsTouched('profession') }}
                                 />
 
                                 {/* 9. Blood Group */}
-                                <Select
-                                    label="Blood Group"
-                                    placeholder="Select Blood Group"
-                                    selectedKeys={editFormData.bloodGroup ? [editFormData.bloodGroup] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Blood Group"
+                                  placeholder="Select Blood Group"
+                                  value={editFormData.bloodGroup ? editFormData.bloodGroup as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, bloodGroup: selectedKey }));
                                         markFieldAsTouched('bloodGroup');
                                     }}
-                                    onClose={() => markFieldAsTouched('bloodGroup')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('bloodGroup', !!editFormData.bloodGroup?.trim()) ? "Blood group is required" : ""}
-                                    isInvalid={shouldShowValidationError('bloodGroup', !!editFormData.bloodGroup?.trim())}
-                                >
-                                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map((item) => (
-                                        <SelectItem key={item} textValue={item}>
-                                            {item}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                  onClose={() => markFieldAsTouched('bloodGroup')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('bloodGroup', !!editFormData.bloodGroup?.trim()) ? "Blood group is required" : ""}
+                                  isInvalid={shouldShowValidationError('bloodGroup', !!editFormData.bloodGroup?.trim())}
+                                  options={['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map((item) => ({ value: String(item), label: item }))}
+                                />
                             </div>
                         </div>
 
 
                         {/* Address Information Section */}
                         <Card className="shadow-md">
-                            <CardHeader className="border-b pb-4 border-gray-200">
+                            <Card.Header className="border-b pb-4 border-gray-200">
                                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-3">
                                     <span className="w-1.5 h-6 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-lg" />
                                     Address Information
                                 </h3>
-                            </CardHeader>
-                            <CardBody className="space-y-6">
+                            </Card.Header>
+                            <Card.Content className="space-y-6">
                                 {/* Permanent Address */}
                                 <div>
                                     <div className="rounded-lg bg-slate-50 p-4 shadow-inner">
@@ -880,16 +769,15 @@ export default function EditBiodataDrawer({
                                             isRequired
                                         />
                                         <div className="mt-4">
-                                            <Input
+                                            <FormInput variant="bordered"
                                                 label="Area or Village Name"
                                                 placeholder="Enter area or village name"
                                                 value={editFormData.permanentArea || ''}
-                                                onChange={(e) => setEditFormData(prev => ({ ...prev, permanentArea: e.target.value }))}
-                                                onBlur={() => markFieldAsTouched('permanentArea')}
-                                                variant="bordered"
+                                                onValueChange={(value) => setEditFormData(prev => ({ ...prev, permanentArea: value }))}
                                                 isRequired
                                                 errorMessage={shouldShowValidationError('permanentArea', !!editFormData.permanentArea?.trim()) ? "Area is required" : ""}
                                                 isInvalid={shouldShowValidationError('permanentArea', !!editFormData.permanentArea?.trim())}
+                                                inputProps={{ onBlur: () => markFieldAsTouched('permanentArea') }}
                                             />
                                         </div>
                                     </div>
@@ -899,7 +787,7 @@ export default function EditBiodataDrawer({
                                 <div className="flex items-center space-x-2 px-2">
                                     <Checkbox
                                         isSelected={editFormData.sameAsPermanent || false}
-                                        onValueChange={(checked) => {
+                                        onChange={(checked: boolean) => {
                                             // Check if permanent address is complete
                                             const isPermanentComplete = !!(editFormData.permanentArea?.trim() &&
                                                 (editFormData.permanentCountry || editFormData.permanentDivision));
@@ -934,6 +822,10 @@ export default function EditBiodataDrawer({
                                         isDisabled={!(editFormData.permanentArea?.trim() &&
                                             (editFormData.permanentCountry || editFormData.permanentDivision))}
                                     >
+                                      <Checkbox.Content>
+                                        <Checkbox.Control>
+                                          <Checkbox.Indicator />
+                                        </Checkbox.Control>
                                         Present address is same as permanent address
                                         {!(editFormData.permanentArea?.trim() &&
                                             (editFormData.permanentCountry || editFormData.permanentDivision)) && (
@@ -941,6 +833,7 @@ export default function EditBiodataDrawer({
                                                     (Complete permanent address first)
                                                 </span>
                                             )}
+                                      </Checkbox.Content>
                                     </Checkbox>
                                 </div>
 
@@ -980,464 +873,377 @@ export default function EditBiodataDrawer({
                                             isRequired
                                         />
                                         <div className="mt-4">
-                                            <Input
+                                            <FormInput variant="bordered"
                                                 label="Area or Village Name"
                                                 placeholder="Enter area or village name"
                                                 value={editFormData.presentArea || ''}
-                                                onChange={(e) => setEditFormData(prev => ({ ...prev, presentArea: e.target.value }))}
-                                                onBlur={() => markFieldAsTouched('presentArea')}
-                                                variant="bordered"
+                                                onValueChange={(value) => setEditFormData(prev => ({ ...prev, presentArea: value }))}
                                                 isRequired
                                                 errorMessage={shouldShowValidationError('presentArea', !!editFormData.presentArea?.trim()) ? "Area is required" : ""}
                                                 isInvalid={shouldShowValidationError('presentArea', !!editFormData.presentArea?.trim())}
+                                                inputProps={{ onBlur: () => markFieldAsTouched('presentArea') }}
                                             />
                                         </div>
                                     </div>
                                 </div>
-                            </CardBody>
+                            </Card.Content>
                         </Card>
 
                         {/* Health Issues Section */}
                         <div className="space-y-4">
-                            <Textarea
+                            <FormTextarea variant="bordered"
                                 label="Do you have any physical or mental health issues?"
                                 placeholder="Please describe any health issues or write 'None' if you don't have any"
                                 value={editFormData.healthIssues || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, healthIssues: e.target.value }))}
-                                onBlur={() => markFieldAsTouched('healthIssues')}
-                                variant="bordered"
-                                minRows={3}
+                                onValueChange={(value) => setEditFormData(prev => ({ ...prev, healthIssues: value }))}
+                                rows={3}
                                 isRequired
                                 errorMessage={shouldShowValidationError('healthIssues', !!editFormData.healthIssues?.trim()) ? "Health information is required" : ""}
                                 isInvalid={shouldShowValidationError('healthIssues', !!editFormData.healthIssues?.trim())}
+                                onBlur={() => markFieldAsTouched('healthIssues')}
                             />
                         </div>
 
                         {/* Education Section */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-foreground border-b border-divider pb-2">
+                            <h3 className="text-lg font-semibold text-foreground border-b border-separator pb-2">
                                 Educational Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Education Medium */}
-                                <Select
-                                    label="Your Education Medium"
-                                    placeholder="Select Medium"
-                                    selectedKeys={editFormData.educationMedium ? [editFormData.educationMedium] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Your Education Medium"
+                                  placeholder="Select Medium"
+                                  value={editFormData.educationMedium ? editFormData.educationMedium as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, educationMedium: selectedKey }));
                                         markFieldAsTouched('educationMedium');
                                     }}
-                                    onClose={() => markFieldAsTouched('educationMedium')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('educationMedium', !!editFormData.educationMedium?.trim()) ? "Education medium is required" : ""}
-                                    isInvalid={shouldShowValidationError('educationMedium', !!editFormData.educationMedium?.trim())}
-                                >
-                                    <SelectItem key="Bangla">Bangla</SelectItem>
-                                    <SelectItem key="English">English</SelectItem>
-                                    <SelectItem key="Arabic">Arabic</SelectItem>
-                                    <SelectItem key="Others">Others</SelectItem>
-                                </Select>
+                                  onClose={() => markFieldAsTouched('educationMedium')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('educationMedium', !!editFormData.educationMedium?.trim()) ? "Education medium is required" : ""}
+                                  isInvalid={shouldShowValidationError('educationMedium', !!editFormData.educationMedium?.trim())}
+                                  options={[{ value: "Bangla", label: "Bangla" }, { value: "English", label: "English" }, { value: "Arabic", label: "Arabic" }, { value: "Others", label: "Others" }]}
+                                />
 
                                 {/* Highest Education Level */}
-                                <Select
-                                    label="Highest Education Level"
-                                    placeholder="Select Level"
-                                    selectedKeys={editFormData.highestEducation ? [editFormData.highestEducation] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Highest Education Level"
+                                  placeholder="Select Level"
+                                  value={editFormData.highestEducation ? editFormData.highestEducation as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, highestEducation: selectedKey }));
                                         markFieldAsTouched('highestEducation');
                                     }}
-                                    onClose={() => markFieldAsTouched('highestEducation')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('highestEducation', !!editFormData.highestEducation?.trim()) ? "Highest education is required" : ""}
-                                    isInvalid={shouldShowValidationError('highestEducation', !!editFormData.highestEducation?.trim())}
-                                >
-                                    <SelectItem key="Below SSC">Below SSC</SelectItem>
-                                    <SelectItem key="SSC">SSC</SelectItem>
-                                    <SelectItem key="HSC">HSC</SelectItem>
-                                    <SelectItem key="Diploma">Diploma</SelectItem>
-                                    <SelectItem key="Diploma Running">Diploma Running</SelectItem>
-                                    <SelectItem key="Honours">Honours</SelectItem>
-                                    <SelectItem key="Honours Running">Honours Running</SelectItem>
-                                    <SelectItem key="Masters">Masters</SelectItem>
-                                    <SelectItem key="Masters Running">Masters Running</SelectItem>
-                                    <SelectItem key="PHD">PHD</SelectItem>
-                                </Select>
+                                  onClose={() => markFieldAsTouched('highestEducation')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('highestEducation', !!editFormData.highestEducation?.trim()) ? "Highest education is required" : ""}
+                                  isInvalid={shouldShowValidationError('highestEducation', !!editFormData.highestEducation?.trim())}
+                                  options={[{ value: "Below SSC", label: "Below SSC" }, { value: "SSC", label: "SSC" }, { value: "HSC", label: "HSC" }, { value: "Diploma", label: "Diploma" }, { value: "Diploma Running", label: "Diploma Running" }, { value: "Honours", label: "Honours" }, { value: "Honours Running", label: "Honours Running" }, { value: "Masters", label: "Masters" }, { value: "Masters Running", label: "Masters Running" }, { value: "PHD", label: "PHD" }]}
+                                />
 
                                 {/* Institute Name */}
-                                <Input
+                                <FormInput variant="bordered"
                                     label="Institute or University Name"
                                     placeholder="Enter institute or university name"
                                     value={editFormData.instituteName || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, instituteName: e.target.value }))}
-                                    onBlur={() => markFieldAsTouched('instituteName')}
-                                    variant="bordered"
+                                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, instituteName: value }))}
                                     isRequired
                                     errorMessage={shouldShowValidationError('instituteName', !!editFormData.instituteName?.trim()) ? "Institute name is required" : ""}
                                     isInvalid={shouldShowValidationError('instituteName', !!editFormData.instituteName?.trim())}
+                                    inputProps={{ onBlur: () => markFieldAsTouched('instituteName') }}
                                 />
 
                                 {/* Subject */}
-                                <Input
+                                <FormInput variant="bordered"
                                     label="Which subject do you study"
                                     placeholder="Enter your subject/major"
                                     value={editFormData.subject || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, subject: e.target.value }))}
-                                    onBlur={() => markFieldAsTouched('subject')}
-                                    variant="bordered"
+                                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, subject: value }))}
                                     isRequired
                                     errorMessage={shouldShowValidationError('subject', !!editFormData.subject?.trim()) ? "Subject is required" : ""}
                                     isInvalid={shouldShowValidationError('subject', !!editFormData.subject?.trim())}
+                                    inputProps={{ onBlur: () => markFieldAsTouched('subject') }}
                                 />
 
                                 {/* Passing Year */}
-                                <Input
+                                <FormInput variant="bordered"
                                     label="Passing Year"
                                     placeholder="Enter passing year"
                                     value={editFormData.passingYear || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, passingYear: e.target.value }))}
-                                    onBlur={() => markFieldAsTouched('passingYear')}
-                                    variant="bordered"
+                                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, passingYear: value }))}
                                     isRequired
                                     errorMessage={shouldShowValidationError('passingYear', !!editFormData.passingYear?.trim()) ? "Passing year is required" : ""}
                                     isInvalid={shouldShowValidationError('passingYear', !!editFormData.passingYear?.trim())}
+                                    inputProps={{ onBlur: () => markFieldAsTouched('passingYear') }}
                                 />
 
                                 {/* Result */}
-                                <Select
-                                    label="Result"
-                                    placeholder="Select Result"
-                                    selectedKeys={editFormData.result ? [editFormData.result] : []}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="Result"
+                                  placeholder="Select Result"
+                                  value={editFormData.result ? editFormData.result as string : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, result: selectedKey }));
                                         markFieldAsTouched('result');
                                     }}
-                                    onClose={() => markFieldAsTouched('result')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('result', !!editFormData.result?.trim()) ? "Result is required" : ""}
-                                    isInvalid={shouldShowValidationError('result', !!editFormData.result?.trim())}
-                                >
-                                    <SelectItem key="A+">A+</SelectItem>
-                                    <SelectItem key="A">A</SelectItem>
-                                    <SelectItem key="A-">A-</SelectItem>
-                                    <SelectItem key="B+">B+</SelectItem>
-                                    <SelectItem key="B">B</SelectItem>
-                                    <SelectItem key="B-">B-</SelectItem>
-                                    <SelectItem key="C+">C+</SelectItem>
-                                    <SelectItem key="C">C</SelectItem>
-                                    <SelectItem key="D">D</SelectItem>
-                                    <SelectItem key="Not Available">Not Available</SelectItem>
-                                </Select>
+                                  onClose={() => markFieldAsTouched('result')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('result', !!editFormData.result?.trim()) ? "Result is required" : ""}
+                                  isInvalid={shouldShowValidationError('result', !!editFormData.result?.trim())}
+                                  options={[{ value: "A+", label: "A+" }, { value: "A", label: "A" }, { value: "A-", label: "A-" }, { value: "B+", label: "B+" }, { value: "B", label: "B" }, { value: "B-", label: "B-" }, { value: "C+", label: "C+" }, { value: "C", label: "C" }, { value: "D", label: "D" }, { value: "Not Available", label: "Not Available" }]}
+                                />
                             </div>
                         </div>
 
                         {/* Family Information Section */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-foreground border-b border-divider pb-2">
+                            <h3 className="text-lg font-semibold text-foreground border-b border-separator pb-2">
                                 Family Information
                             </h3>
 
                             {/* Economic Condition */}
-                            <Select
-                                label="Family's Economic Condition"
-                                placeholder="Select Economic Condition"
-                                selectedKeys={editFormData.economicCondition ? [editFormData.economicCondition] : []}
-                                onSelectionChange={(keys) => {
-                                    const selectedKey = Array.from(keys)[0] as string;
+                            <FormSelect variant="bordered"
+                              label="Family's Economic Condition"
+                              placeholder="Select Economic Condition"
+                              value={editFormData.economicCondition ? editFormData.economicCondition as string : null}
+                              onValueChange={(selected) => {
+                                    const selectedKey = selected ?? "";
                                     setEditFormData(prev => ({ ...prev, economicCondition: selectedKey }));
                                     markFieldAsTouched('economicCondition');
                                 }}
-                                onClose={() => markFieldAsTouched('economicCondition')}
-                                variant="bordered"
-                                isRequired
-                                errorMessage={shouldShowValidationError('economicCondition', !!editFormData.economicCondition?.trim()) ? "Economic condition is required" : ""}
-                                isInvalid={shouldShowValidationError('economicCondition', !!editFormData.economicCondition?.trim())}
-                            >
-                                <SelectItem key="Lower Class">Lower Class</SelectItem>
-                                <SelectItem key="Lower Middle Class">Lower Middle Class</SelectItem>
-                                <SelectItem key="Middle Class">Middle Class</SelectItem>
-                                <SelectItem key="Upper Middle Class">Upper Middle Class</SelectItem>
-                                <SelectItem key="Upper Class">Upper Class</SelectItem>
-                            </Select>
+                              onClose={() => markFieldAsTouched('economicCondition')}
+                              isRequired
+                              errorMessage={shouldShowValidationError('economicCondition', !!editFormData.economicCondition?.trim()) ? "Economic condition is required" : ""}
+                              isInvalid={shouldShowValidationError('economicCondition', !!editFormData.economicCondition?.trim())}
+                              options={[{ value: "Lower Class", label: "Lower Class" }, { value: "Lower Middle Class", label: "Lower Middle Class" }, { value: "Middle Class", label: "Middle Class" }, { value: "Upper Middle Class", label: "Upper Middle Class" }, { value: "Upper Class", label: "Upper Class" }]}
+                            />
 
                             {/* Father Information */}
                             <Card className="shadow-sm">
-                                <CardHeader className="border-b border-divider">
+                                <Card.Header className="border-b border-separator">
                                     <h4 className="text-md font-semibold text-foreground">Father's Information</h4>
-                                </CardHeader>
-                                <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                    <Input
+                                </Card.Header>
+                                <Card.Content className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                    <FormInput variant="bordered"
                                         label="Father's Name"
                                         placeholder="Enter father's name"
                                         value={editFormData.fatherName || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, fatherName: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('fatherName')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, fatherName: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('fatherName', !!editFormData.fatherName?.trim()) ? "Father's name is required" : ""}
                                         isInvalid={shouldShowValidationError('fatherName', !!editFormData.fatherName?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('fatherName') }}
                                     />
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Father's Profession"
                                         placeholder="Enter father's profession"
                                         value={editFormData.fatherProfession || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, fatherProfession: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('fatherProfession')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, fatherProfession: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('fatherProfession', !!editFormData.fatherProfession?.trim()) ? "Father's profession is required" : ""}
                                         isInvalid={shouldShowValidationError('fatherProfession', !!editFormData.fatherProfession?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('fatherProfession') }}
                                     />
-                                    <Select
-                                        label="Is your father alive?"
-                                        placeholder="Select Status"
-                                        selectedKeys={editFormData.fatherAlive ? [editFormData.fatherAlive] : []}
-                                        onSelectionChange={(keys) => {
-                                            const selectedKey = Array.from(keys)[0] as string;
+                                    <FormSelect variant="bordered"
+                                      label="Is your father alive?"
+                                      placeholder="Select Status"
+                                      value={editFormData.fatherAlive ? editFormData.fatherAlive as string : null}
+                                      onValueChange={(selected) => {
+                                            const selectedKey = selected ?? "";
                                             setEditFormData(prev => ({ ...prev, fatherAlive: selectedKey }));
                                             markFieldAsTouched('fatherAlive');
                                         }}
-                                        onClose={() => markFieldAsTouched('fatherAlive')}
-                                        variant="bordered"
-                                        isRequired
-                                        errorMessage={shouldShowValidationError('fatherAlive', !!editFormData.fatherAlive?.trim()) ? "Father's status is required" : ""}
-                                        isInvalid={shouldShowValidationError('fatherAlive', !!editFormData.fatherAlive?.trim())}
-                                    >
-                                        <SelectItem key="Yes">Yes</SelectItem>
-                                        <SelectItem key="No">No</SelectItem>
-                                    </Select>
-                                </CardBody>
+                                      onClose={() => markFieldAsTouched('fatherAlive')}
+                                      isRequired
+                                      errorMessage={shouldShowValidationError('fatherAlive', !!editFormData.fatherAlive?.trim()) ? "Father's status is required" : ""}
+                                      isInvalid={shouldShowValidationError('fatherAlive', !!editFormData.fatherAlive?.trim())}
+                                      options={[{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }]}
+                                    />
+                                </Card.Content>
                             </Card>
 
                             {/* Mother Information */}
                             <Card className="shadow-sm">
-                                <CardHeader className="border-b border-divider">
+                                <Card.Header className="border-b border-separator">
                                     <h4 className="text-md font-semibold text-foreground">Mother's Information</h4>
-                                </CardHeader>
-                                <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                    <Input
+                                </Card.Header>
+                                <Card.Content className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                    <FormInput variant="bordered"
                                         label="Mother's Name"
                                         placeholder="Enter mother's name"
                                         value={editFormData.motherName || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, motherName: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('motherName')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, motherName: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('motherName', !!editFormData.motherName?.trim()) ? "Mother's name is required" : ""}
                                         isInvalid={shouldShowValidationError('motherName', !!editFormData.motherName?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('motherName') }}
                                     />
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Mother's Profession"
                                         placeholder="Enter mother's profession"
                                         value={editFormData.motherProfession || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, motherProfession: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('motherProfession')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, motherProfession: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('motherProfession', !!editFormData.motherProfession?.trim()) ? "Mother's profession is required" : ""}
                                         isInvalid={shouldShowValidationError('motherProfession', !!editFormData.motherProfession?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('motherProfession') }}
                                     />
-                                    <Select
-                                        label="Is your mother alive?"
-                                        placeholder="Select Status"
-                                        selectedKeys={editFormData.motherAlive ? [editFormData.motherAlive] : []}
-                                        onSelectionChange={(keys) => {
-                                            const selectedKey = Array.from(keys)[0] as string;
+                                    <FormSelect variant="bordered"
+                                      label="Is your mother alive?"
+                                      placeholder="Select Status"
+                                      value={editFormData.motherAlive ? editFormData.motherAlive as string : null}
+                                      onValueChange={(selected) => {
+                                            const selectedKey = selected ?? "";
                                             setEditFormData(prev => ({ ...prev, motherAlive: selectedKey }));
                                             markFieldAsTouched('motherAlive');
                                         }}
-                                        onClose={() => markFieldAsTouched('motherAlive')}
-                                        variant="bordered"
-                                        isRequired
-                                        errorMessage={shouldShowValidationError('motherAlive', !!editFormData.motherAlive?.trim()) ? "Mother's status is required" : ""}
-                                        isInvalid={shouldShowValidationError('motherAlive', !!editFormData.motherAlive?.trim())}
-                                    >
-                                        <SelectItem key="Yes">Yes</SelectItem>
-                                        <SelectItem key="No">No</SelectItem>
-                                    </Select>
-                                </CardBody>
+                                      onClose={() => markFieldAsTouched('motherAlive')}
+                                      isRequired
+                                      errorMessage={shouldShowValidationError('motherAlive', !!editFormData.motherAlive?.trim()) ? "Mother's status is required" : ""}
+                                      isInvalid={shouldShowValidationError('motherAlive', !!editFormData.motherAlive?.trim())}
+                                      options={[{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }]}
+                                    />
+                                </Card.Content>
                             </Card>
 
                             {/* Siblings Information */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Select
-                                    label="How many brothers do you have?"
-                                    placeholder="Select Number"
-                                    selectedKeys={editFormData.brothersCount !== undefined ? new Set([String(editFormData.brothersCount)]) : new Set()}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="How many brothers do you have?"
+                                  placeholder="Select Number"
+                                  value={editFormData.brothersCount !== undefined ? String(editFormData.brothersCount) : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, brothersCount: parseInt(selectedKey) }));
                                         markFieldAsTouched('brothersCount');
                                     }}
-                                    onClose={() => markFieldAsTouched('brothersCount')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('brothersCount', editFormData.brothersCount !== undefined) ? "Brothers count is required" : ""}
-                                    isInvalid={shouldShowValidationError('brothersCount', editFormData.brothersCount !== undefined)}
-                                >
-                                    {Array.from({ length: 11 }, (_, i) => (
-                                        <SelectItem key={String(i)} textValue={String(i)}>
-                                            {i}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                  onClose={() => markFieldAsTouched('brothersCount')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('brothersCount', editFormData.brothersCount !== undefined) ? "Brothers count is required" : ""}
+                                  isInvalid={shouldShowValidationError('brothersCount', editFormData.brothersCount !== undefined)}
+                                  options={Array.from({ length: 11 }, (_, i) => ({ value: String(i), label: String(i) }))}
+                                />
 
-                                <Select
-                                    label="How many sisters do you have?"
-                                    placeholder="Select Number"
-                                    selectedKeys={editFormData.sistersCount !== undefined ? new Set([String(editFormData.sistersCount)]) : new Set()}
-                                    onSelectionChange={(keys) => {
-                                        const selectedKey = Array.from(keys)[0] as string;
+                                <FormSelect variant="bordered"
+                                  label="How many sisters do you have?"
+                                  placeholder="Select Number"
+                                  value={editFormData.sistersCount !== undefined ? String(editFormData.sistersCount) : null}
+                                  onValueChange={(selected) => {
+                                        const selectedKey = selected ?? "";
                                         setEditFormData(prev => ({ ...prev, sistersCount: parseInt(selectedKey) }));
                                         markFieldAsTouched('sistersCount');
                                     }}
-                                    onClose={() => markFieldAsTouched('sistersCount')}
-                                    variant="bordered"
-                                    isRequired
-                                    errorMessage={shouldShowValidationError('sistersCount', editFormData.sistersCount !== undefined) ? "Sisters count is required" : ""}
-                                    isInvalid={shouldShowValidationError('sistersCount', editFormData.sistersCount !== undefined)}
-                                >
-                                    {Array.from({ length: 11 }, (_, i) => (
-                                        <SelectItem key={String(i)} textValue={String(i)}>
-                                            {i}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                  onClose={() => markFieldAsTouched('sistersCount')}
+                                  isRequired
+                                  errorMessage={shouldShowValidationError('sistersCount', editFormData.sistersCount !== undefined) ? "Sisters count is required" : ""}
+                                  isInvalid={shouldShowValidationError('sistersCount', editFormData.sistersCount !== undefined)}
+                                  options={Array.from({ length: 11 }, (_, i) => ({ value: String(i), label: String(i) }))}
+                                />
                             </div>
 
                             {/* Family Details */}
-                            <Textarea
+                            <FormTextarea variant="bordered"
                                 label="Write details about yourself and your family"
                                 placeholder="Share any additional information about yourself and your family background"
                                 value={editFormData.familyDetails || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, familyDetails: e.target.value }))}
-                                variant="bordered"
-                                minRows={4}
+                                onValueChange={(value) => setEditFormData(prev => ({ ...prev, familyDetails: value }))}
+                                rows={4}
                             />
                         </div>
 
                         {/* Partner Preferences Section */}
                         <Card className="shadow-md">
-                            <CardHeader className="border-b border-divider pb-4">
+                            <Card.Header className="border-b border-separator pb-4">
                                 <h3 className="text-lg font-semibold text-foreground">
                                     Partner Preferences
                                 </h3>
-                            </CardHeader>
-                            <CardBody className="space-y-8 pt-6">
+                            </Card.Header>
+                            <Card.Content className="space-y-8 pt-6">
                                 {/* Partner Age Range */}
                                 <div className="space-y-4">
                                     <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                        <Slider
-                                            className="max-w-full"
-                                            aria-label="Preferred Age Range"
-                                            label="Preferred Age Range"
-                                            minValue={18}
-                                            maxValue={70}
-                                            step={1}
-                                            value={[
-                                                editFormData.partnerAgeMin || 18,
-                                                editFormData.partnerAgeMax || 40
-                                            ] as [number, number]}
-                                            onChange={(val) => {
-                                                const values = Array.isArray(val) ? val : [18, 40];
-                                                const min = Math.min(values[0], values[1] - 1);
-                                                const max = Math.max(values[1], min + 1);
-                                                setEditFormData(prev => ({
-                                                    ...prev,
-                                                    partnerAgeMin: min,
-                                                    partnerAgeMax: max
-                                                }));
-                                            }}
-                                            formatOptions={{ style: "unit", unit: "year" }}
-                                            getValue={(vals) => Array.isArray(vals) ? `${vals[0]} - ${vals[1]} years` : `${vals} years`}
+                                        <AgeRangeSlider
+                                            value={[editFormData.partnerAgeMin || 18, editFormData.partnerAgeMax || 40]}
+                                            onChange={([min, max]) => setEditFormData(prev => ({ ...prev, partnerAgeMin: min, partnerAgeMax: max }))}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Preferred Complexion"
                                         placeholder="Enter preferred complexion"
                                         value={editFormData.partnerComplexion || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, partnerComplexion: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('partnerComplexion')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, partnerComplexion: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('partnerComplexion', !!editFormData.partnerComplexion?.trim()) ? "Partner complexion is required" : ""}
                                         isInvalid={shouldShowValidationError('partnerComplexion', !!editFormData.partnerComplexion?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('partnerComplexion') }}
                                     />
 
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Preferred Height"
                                         placeholder="Enter preferred height"
                                         value={editFormData.partnerHeight || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, partnerHeight: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('partnerHeight')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, partnerHeight: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('partnerHeight', !!editFormData.partnerHeight?.trim()) ? "Partner height is required" : ""}
                                         isInvalid={shouldShowValidationError('partnerHeight', !!editFormData.partnerHeight?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('partnerHeight') }}
                                     />
 
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Preferred Education"
                                         placeholder="Enter preferred education"
                                         value={editFormData.partnerEducation || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, partnerEducation: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('partnerEducation')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, partnerEducation: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('partnerEducation', !!editFormData.partnerEducation?.trim()) ? "Partner education is required" : ""}
                                         isInvalid={shouldShowValidationError('partnerEducation', !!editFormData.partnerEducation?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('partnerEducation') }}
                                     />
 
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Preferred Profession"
                                         placeholder="Enter preferred profession"
                                         value={editFormData.partnerProfession || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, partnerProfession: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('partnerProfession')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, partnerProfession: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('partnerProfession', !!editFormData.partnerProfession?.trim()) ? "Partner profession is required" : ""}
                                         isInvalid={shouldShowValidationError('partnerProfession', !!editFormData.partnerProfession?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('partnerProfession') }}
                                     />
                                 </div>
 
-                                <Textarea
+                                <FormTextarea variant="bordered"
                                     label="Preferred Place"
                                     placeholder="Enter preferred location"
                                     value={editFormData.partnerLocation || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, partnerLocation: e.target.value }))}
-                                    onBlur={() => markFieldAsTouched('partnerLocation')}
-                                    variant="bordered"
+                                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, partnerLocation: value }))}
                                     isRequired
                                     errorMessage={shouldShowValidationError('partnerLocation', !!editFormData.partnerLocation?.trim()) ? "Partner location is required" : ""}
                                     isInvalid={shouldShowValidationError('partnerLocation', !!editFormData.partnerLocation?.trim())}
-                                    minRows={2}
+                                    rows={2}
+                                    onBlur={() => markFieldAsTouched('partnerLocation')}
                                 />
 
-                                <Textarea
+                                <FormTextarea variant="bordered"
                                     label="Details about the prospective spouse"
                                     placeholder="Share your expectations and preferences for your life partner"
                                     value={editFormData.partnerDetails || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, partnerDetails: e.target.value }))}
-                                    variant="bordered"
-                                    minRows={3}
+                                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, partnerDetails: value }))}
+                                    rows={3}
                                 />
-                            </CardBody>
+                            </Card.Content>
                         </Card>
 
                         {/* Contact Information Section */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-foreground border-b border-divider pb-2">
+                            <h3 className="text-lg font-semibold text-foreground border-b border-separator pb-2">
                                 Contact Information
                             </h3>
 
@@ -1469,8 +1275,9 @@ export default function EditBiodataDrawer({
                                             <p className="text-sm font-medium text-foreground">
                                                 Make Profile Picture Public
                                             </p>
-                                            <Tooltip content="When enabled, your profile picture will be visible to other users browsing biodatas">
-                                                <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                                            <Tooltip delay={200}>
+                                              <Tooltip.Trigger tabIndex={0}><Info className="w-4 h-4 text-slate-400 cursor-help" /></Tooltip.Trigger>
+                                              <Tooltip.Content>When enabled, your profile picture will be visible to other users browsing biodatas</Tooltip.Content>
                                             </Tooltip>
                                         </div>
                                         <p className="text-xs text-slate-600">
@@ -1487,20 +1294,14 @@ export default function EditBiodataDrawer({
                                             }`}>
                                             {editFormData.profilePictureVisible ? 'Public' : 'Private'}
                                         </span>
-                                        <Switch
-                                            isSelected={editFormData.profilePictureVisible || false}
-                                            onValueChange={(value) => {
+                                        <Switch isSelected={editFormData.profilePictureVisible || false} onChange={(value) => {
                                                 setEditFormData(prev => ({ ...prev, profilePictureVisible: value }));
-                                                addToast(
-                                                    value
-                                                        ? 'Profile picture is now public'
-                                                        : 'Profile picture is now private',
-                                                    'success'
-                                                );
-                                            }}
-                                            color="success"
-                                            size="md"
-                                        />
+                                                toast.success(value ? 'Profile picture is now public' : 'Profile picture is now private');
+                                            }} size="md" aria-label="Make profile picture public">
+                                          <Switch.Control>
+                                            <Switch.Thumb />
+                                          </Switch.Control>
+                                        </Switch>
                                     </div>
                                 </div>
 
@@ -1509,13 +1310,11 @@ export default function EditBiodataDrawer({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Your full name"
                                         placeholder="Enter full name"
                                         value={editFormData.fullName || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('fullName')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, fullName: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('fullName', !!editFormData.fullName?.trim()) ? "Your full name is required" : ""}
                                         isInvalid={shouldShowValidationError('fullName', !!editFormData.fullName?.trim())}
@@ -1526,69 +1325,66 @@ export default function EditBiodataDrawer({
                                             </div>
                                         }
                                         endContent={
-                                            <Tooltip content="Only visible for admin">
-                                                <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                                            <Tooltip delay={200}>
+                                              <Tooltip.Trigger tabIndex={0}><Info className="w-4 h-4 text-slate-400 cursor-help" /></Tooltip.Trigger>
+                                              <Tooltip.Content>Only visible for admin</Tooltip.Content>
                                             </Tooltip>
                                         }
+                                        inputProps={{ onBlur: () => markFieldAsTouched('fullName') }}
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Email"
                                         type="email"
                                         placeholder="Enter email address"
                                         value={editFormData.email || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('email')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, email: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('email', !!editFormData.email?.trim()) ? "Email is required" : ""}
                                         isInvalid={shouldShowValidationError('email', !!editFormData.email?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('email') }}
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Guardian's Mobile Number"
                                         type="tel"
                                         placeholder="Enter guardian's mobile number"
                                         value={editFormData.guardianMobile || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, guardianMobile: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('guardianMobile')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, guardianMobile: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('guardianMobile', !!editFormData.guardianMobile?.trim()) ? "Guardian's mobile number is required" : ""}
                                         isInvalid={shouldShowValidationError('guardianMobile', !!editFormData.guardianMobile?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('guardianMobile') }}
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <Input
+                                    <FormInput variant="bordered"
                                         label="Own Mobile Number"
                                         type="tel"
                                         placeholder="Enter your mobile number"
                                         value={editFormData.ownMobile || ''}
-                                        onChange={(e) => setEditFormData(prev => ({ ...prev, ownMobile: e.target.value }))}
-                                        onBlur={() => markFieldAsTouched('ownMobile')}
-                                        variant="bordered"
+                                        onValueChange={(value) => setEditFormData(prev => ({ ...prev, ownMobile: value }))}
                                         isRequired
                                         errorMessage={shouldShowValidationError('ownMobile', !!editFormData.ownMobile?.trim()) ? "Own mobile number is required" : ""}
                                         isInvalid={shouldShowValidationError('ownMobile', !!editFormData.ownMobile?.trim())}
+                                        inputProps={{ onBlur: () => markFieldAsTouched('ownMobile') }}
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
-                </DrawerBody>
-                <DrawerFooter className="flex justify-end items-center px-6 py-4 bg-content1/50">
+                </Drawer.Body>
+                <Drawer.Footer className="flex justify-end items-center px-6 py-4 bg-surface/50">
                     <Button
-                        color="primary"
+                        variant="primary"
                         size="md"
                         onPress={handleSaveBiodata}
-                        isLoading={isUpdatingBiodata}
+                        isPending={isUpdatingBiodata}
                         isDisabled={isUpdatingBiodata}
-                        variant="shadow"
                         className="font-semibold px-8 min-w-[120px]"
-                        startContent={!isUpdatingBiodata ? <span>💾</span> : undefined}
-                    >
+                    >{!isUpdatingBiodata ? <span>💾</span> : undefined}
                         {isUpdatingBiodata
                             ? "Saving..."
                             : selectedBiodata
@@ -1596,8 +1392,9 @@ export default function EditBiodataDrawer({
                                 : "Create Biodata"
                         }
                     </Button>
-                </DrawerFooter>
-            </DrawerContent>
-        </Drawer>
+                </Drawer.Footer>
+            </Drawer.Dialog>
+          </Drawer.Content>
+        </Drawer.Backdrop>
     );
 }

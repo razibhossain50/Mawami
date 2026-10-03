@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Standalone server bundle for the Docker image (frontend/Dockerfile sets NEXT_OUTPUT)
+  // Tracing root is the monorepo root so hoisted workspace node_modules are included
+  ...(process.env.NEXT_OUTPUT === 'standalone'
+    ? { output: 'standalone' as const, outputFileTracingRoot: path.join(__dirname, '..') }
+    : {}),
   images: {
     remotePatterns: [
       {
@@ -41,13 +46,6 @@ const nextConfig: NextConfig = {
       ];
     }
     return [];
-  },
-  webpack(config) {
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ["@svgr/webpack"],
-    });
-    return config;
   },
 };
 

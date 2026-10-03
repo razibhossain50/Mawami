@@ -6,7 +6,8 @@ import { EducationalInfoStep } from "@/components/profile/marriage/educational-i
 import { FamilyInfoStep } from "@/components/profile/marriage/family-info-step";
 import { ContactInfoStep } from "@/components/profile/marriage/contact-info-step";
 import { PartnerPreferencesStep } from "@/components/profile/marriage/partner-preferences-step";
-import { Button, Card, CardBody, addToast } from "@heroui/react";
+import { Button, Card, toast } from "@heroui/react";
+import { LinkButton } from "@/components/ui/link-button";
 import { ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/services/queryClient";
@@ -322,14 +323,9 @@ export default function BiodataForm() {
             });
 
             // Show HeroUI success toast
-            addToast({
-                title: "Success!",
-                color: "success",
-                description: isCreateMode
+            toast("Success!", { description: isCreateMode
                     ? "Your biodata has been created and submitted successfully!"
-                    : "Your biodata has been updated and submitted successfully!",
-                timeout: 4000,
-            });
+                    : "Your biodata has been updated and submitted successfully!", variant: "success" });
 
             // Redirect to the biodata view page after successful create/update
             setTimeout(() => {
@@ -342,47 +338,27 @@ export default function BiodataForm() {
             logger.error('submitMutation.onError called with', submitError, 'BiodataEdit');
             const errorMessage = (error as Error)?.message ||
                 (isCreateMode ? "Failed to create biodata. Please try again." : "Failed to update biodata. Please try again.");
-            addToast({
-                title: "Error",
-                description: errorMessage,
-            });
+            toast("Error", { description: errorMessage, variant: "danger" });
         },
     });
 
     // Load existing data when component mounts (only once)
     useEffect(() => {
-        console.log('🔄 useEffect triggered:', {
-            existingBiodata: !!existingBiodata,
-            redirecting: existingBiodata?.redirecting,
-            hasLoadedInitialData: hasLoadedInitialData.current,
-            currentStep
-        });
-        console.log('📍 useEffect call stack:', new Error().stack);
-
         if (existingBiodata && !existingBiodata.redirecting && !hasLoadedInitialData.current) {
-            console.log('📥 Loading initial biodata data');
             biodataIdRef.current = existingBiodata.id;
 
-            // Fix completedSteps order if it's out of order
-            if (existingBiodata.completedSteps && Array.isArray(existingBiodata.completedSteps)) {
-                const parsedSteps = existingBiodata.completedSteps.map((s: any) => {
-                    const num = typeof s === 'string' ? parseInt(s) : s;
-                    return isNaN(num) ? null : num;
-                }).filter((n: any) => n !== null) as number[];
-
-                const sortedSteps = [...parsedSteps].sort((a, b) => a - b);
-                const isOutOfOrder = JSON.stringify(parsedSteps) !== JSON.stringify(sortedSteps);
-
-                if (isOutOfOrder) {
-                    // Update the completedSteps in the existing data
-                    existingBiodata.completedSteps = sortedSteps;
-                }
+            // Normalize completedSteps (numbers, ascending) on a copy; the query cache must not be mutated
+            let biodataToLoad = existingBiodata;
+            if (Array.isArray(existingBiodata.completedSteps)) {
+                const sortedSteps = existingBiodata.completedSteps
+                    .map((s: any) => (typeof s === 'string' ? parseInt(s, 10) : s))
+                    .filter((n: any) => typeof n === 'number' && !isNaN(n))
+                    .sort((a: number, b: number) => a - b);
+                biodataToLoad = { ...existingBiodata, completedSteps: sortedSteps };
             }
 
-            loadFormData(existingBiodata, false); // Don't preserve step for initial load
+            loadFormData(biodataToLoad, false); // Don't preserve step for initial load
             hasLoadedInitialData.current = true;
-        } else if (existingBiodata && !existingBiodata.redirecting && hasLoadedInitialData.current) {
-            console.log('⚠️ useEffect running again after initial load - this might be causing the step reset!');
         }
     }, [existingBiodata?.id, existingBiodata?.redirecting]); // Only depend on stable values
 
@@ -567,7 +543,7 @@ export default function BiodataForm() {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
                 <Card className="max-w-md mx-auto">
-                    <CardBody className="p-8 text-center">
+                    <Card.Content className="p-8 text-center">
                         <div className="text-red-500 mb-4">
                             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -578,14 +554,14 @@ export default function BiodataForm() {
                             {(error as Error)?.message || "Failed to load biodata for editing"}
                         </p>
                         <div className="space-y-3">
-                            <Button onClick={() => window.location.reload()} className="w-full">
+                            <Button onPress={() => window.location.reload()} className="w-full">
                                 Try Again
                             </Button>
-                            <Button variant="bordered" as={Link} href="/profile/biodatas" className="w-full">
+                            <LinkButton variant="outline" href="/profile/biodatas" className="w-full">
                                 View Biodatas
-                            </Button>
+                            </LinkButton>
                         </div>
-                    </CardBody>
+                    </Card.Content>
                 </Card>
             </div>
         );
@@ -596,14 +572,12 @@ export default function BiodataForm() {
             <div className="max-w-5xl mx-auto px-3 md:px-6 lg:px-8 py-8">
                 {/* Back Button */}
                 <div className="text-center mb-6">
-                    <Button
-                        variant="bordered"
-                        as={Link}
+                    <LinkButton
+                        variant="outline"
                         href={isCreateMode ? "/profile/biodatas" : `/profile/biodatas/${biodataId}`}
-                        startContent={<ArrowLeft className="w-4 h-4" />}
-                    >
+                    >{<ArrowLeft className="w-4 h-4" />}
                         {isCreateMode ? "View Biodatas" : "View Bioadata"}
-                    </Button>
+                    </LinkButton>
                 </div>
 
                 {/* Modern Header */}
@@ -632,7 +606,7 @@ export default function BiodataForm() {
 
                 {/* Form Content */}
                 <Card className="shadow-sm">
-                    <CardBody className="p-4 md:p-8">
+                    <Card.Content className="p-4 md:p-8">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-12">
                                 <div className="text-center">
@@ -647,12 +621,11 @@ export default function BiodataForm() {
                         {/* Navigation Buttons */}
                         <div className="flex justify-between items-center pt-6 border-t border-slate-200 mt-8">
                             <Button
+                                variant="outline"
                                 className="px-3"
-                                variant="bordered"
-                                onClick={prevStep}
+                                onPress={prevStep}
                                 isDisabled={isFirstStep}
-                                startContent={<ChevronLeft className="w-4 h-4" />}
-                            >
+                            >{<ChevronLeft className="w-4 h-4" />}
                                 Previous
                             </Button>
 
@@ -662,9 +635,9 @@ export default function BiodataForm() {
 
                             {isLastStep ? (
                                 <Button
+                                    variant="primary"
                                     className="px-3"
-                                    color="primary"
-                                    onClick={handleSubmit}
+                                    onPress={handleSubmit}
                                     isDisabled={submitMutation.isPending || saveStepMutation.isPending}
                                 >
                                     {submitMutation.isPending
@@ -673,16 +646,15 @@ export default function BiodataForm() {
                                 </Button>
                             ) : (
                                 <Button
-                                    color="primary"
-                                    onClick={handleNext}
+                                    variant="primary"
+                                    onPress={handleNext}
                                     isDisabled={saveStepMutation.isPending}
-                                    endContent={<ChevronRight className="w-4 h-4" />}
                                 >
                                     {saveStepMutation.isPending ? "Saving..." : "Next"}
-                                </Button>
+                                {<ChevronRight className="w-4 h-4" />}</Button>
                             )}
                         </div>
-                    </CardBody>
+                    </Card.Content>
                 </Card>
             </div>
         </div>

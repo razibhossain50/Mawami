@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { FormInput, FormSelect } from "@/components/ui/form-fields";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import {
-    Card, CardBody, CardHeader, Button, Select, SelectItem, Input, Chip,
-    Pagination, Avatar, Divider
-} from "@heroui/react";
+import { Card, Button, Chip, Avatar, Separator } from "@heroui/react";
+import { LinkButton } from "@/components/ui/link-button";
+import { PageNav } from "@/components/ui/page-nav";
 import { Search, User, Eye, Heart, Sparkles, Star } from "lucide-react";
 import { LocationSelector } from "@/components/form/LocationSelector";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -41,110 +42,51 @@ interface Biodata {
 }
 
 export const BiodataSearch = () => {
-    const [biodatas, setBiodatas] = useState<Biodata[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedGender, setSelectedGender] = useState<string>("");
-    const [selectedMaritalStatus, setSelectedMaritalStatus] = useState<string>("");
-    const [selectedLocation, setSelectedLocation] = useState<string>("");
-    const [biodataNumber, setBiodataNumber] = useState<string>("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [hasSearched, setHasSearched] = useState(false);
-    const [favoriteStates, setFavoriteStates] = useState<{ [key: number]: boolean }>({});
-    const [favoriteLoading, setFavoriteLoading] = useState<{ [key: number]: boolean }>({});
-
-    // Add hooks for authentication and favorites
-    const { user, isAuthenticated } = useRegularAuth();
-    const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    // Search state is restored from the URL once, on first render
+    const [initialFilters] = useState(() => ({
+        gender: searchParams.get('gender') || "",
+        maritalStatus: searchParams.get('maritalStatus') || "",
+        location: searchParams.get('location') || "",
+        biodataNumber: searchParams.get('biodataNumber') || ""
+    }));
+    const restoredSearch = searchParams.get('searched') === 'true' || Object.values(initialFilters).some(Boolean);
+
+    const [selectedGender, setSelectedGender] = useState<string>(initialFilters.gender);
+    const [selectedMaritalStatus, setSelectedMaritalStatus] = useState<string>(initialFilters.maritalStatus);
+    const [selectedLocation, setSelectedLocation] = useState<string>(initialFilters.location);
+    const [biodataNumber, setBiodataNumber] = useState<string>(initialFilters.biodataNumber);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasSearched, setHasSearched] = useState(restoredSearch);
+    const [favoriteLoading, setFavoriteLoading] = useState<{ [key: number]: boolean }>({});
+
+    // The search filters that were used for the current results
+    const [searchFilters, setSearchFilters] = useState(initialFilters);
+
+    // Add hooks for authentication and favorites
+    const { user, isAuthenticated } = useRegularAuth();
+    // Favorite state comes from the shared, cached favorites list (no per-card requests)
+    const { addToFavorites, removeFromFavorites, favoriteIds } = useFavorites();
+
     const itemsPerPage = 12;
 
-    // Restore search state from URL parameters on component load
-    useEffect(() => {
-        const gender = searchParams.get('gender');
-        const maritalStatus = searchParams.get('maritalStatus');
-        const location = searchParams.get('location');
-        const biodataNumber = searchParams.get('biodataNumber');
-        const searched = searchParams.get('searched');
-
-        // Set form field values
-        if (gender) {
-            setSelectedGender(gender);
-        }
-        if (maritalStatus) {
-            setSelectedMaritalStatus(maritalStatus);
-        }
-        if (location) {
-            setSelectedLocation(location);
-        }
-        if (biodataNumber) {
-            setBiodataNumber(biodataNumber);
-        }
-        
-        // If we have search parameters, automatically perform the search
-        if (searched === 'true' || gender || maritalStatus || location || biodataNumber) {
-            setHasSearched(true);
-            
-            // Set search filters immediately
-            const filters = {
-                gender: gender || "",
-                maritalStatus: maritalStatus || "",
-                location: location || "",
-                biodataNumber: biodataNumber || ""
-            };
-            setSearchFilters(filters);
-            
-            // Trigger search with restored parameters
-            setTimeout(() => {
-                handleSearchFromParams(gender, maritalStatus, location, biodataNumber);
-            }, 200); // Slightly longer delay to ensure all state is set
-        }
-    }, [searchParams]);
-
-    // Handle search from URL parameters
-    const handleSearchFromParams = async (gender?: string | null, maritalStatus?: string | null, location?: string | null, biodataNumberParam?: string | null) => {
-        const filters = {
-            gender: gender || selectedGender || "",
-            maritalStatus: maritalStatus || selectedMaritalStatus || "",
-            location: location || selectedLocation || "",
-            biodataNumber: biodataNumberParam || biodataNumber || ""
-        };
-
-        setSearchFilters(filters);
-        await fetchBiodatas();
-    };
-
-    const fetchBiodatas = async () => {
-        try {
-            setLoading(true);
-            logger.debug('Fetching biodatas', undefined, 'BiodataSearch');
-
-            const data = await publicApi.get('/biodatas');
-
-            // Handle both single object and array responses
-            const biodatasArray = Array.isArray(data) ? data : [data];
-            setBiodatas(biodatasArray);
-            setError(null);
-
-            logger.info('Successfully fetched biodatas', { count: biodatasArray.length }, 'BiodataSearch');
-        } catch (error) {
-            const appError = handleApiError(error, 'BiodataSearch');
-            logger.error('Failed to fetch biodatas', appError, 'BiodataSearch');
-            setError(appError.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Store the search filters that were used for the current results
-    const [searchFilters, setSearchFilters] = useState({
-        gender: "",
-        maritalStatus: "",
-        location: "",
-        biodataNumber: ""
+    // All public biodatas, fetched once a search has been run (including one restored from the URL)
+    const {
+        data: biodatas = [],
+        isFetching: loading,
+        error: fetchError,
+        refetch,
+    } = useQuery({
+        queryKey: ['public-biodatas'],
+        enabled: hasSearched,
+        queryFn: async (): Promise<Biodata[]> => {
+            const data = await publicApi.get<Biodata[] | Biodata>('/biodatas');
+            return Array.isArray(data) ? data : [data];
+        },
     });
+    const error = fetchError instanceof Error ? fetchError.message : null;
 
     // Filter and search logic - only filters when search has been performed
     const filteredBiodatas = useMemo(() => {
@@ -293,7 +235,7 @@ export const BiodataSearch = () => {
 
             // Biodata number filter - use the search filters, not current form state
             const matchesBiodataNumber = !searchFilters.biodataNumber || searchFilters.biodataNumber === '' ||
-                biodata.id.toString().includes(searchFilters.biodataNumber);
+                biodata.id.toString() === searchFilters.biodataNumber.trim().replace(/^BD/i, '');
 
             const finalMatch = matchesGender && matchesMaritalStatus && matchesLocation && matchesBiodataNumber;
 
@@ -323,42 +265,6 @@ export const BiodataSearch = () => {
     const endIndex = startIndex + itemsPerPage;
     const currentBiodatas = filteredBiodatas.slice(startIndex, endIndex);
 
-    // Track which biodatas we've already checked to prevent duplicate API calls
-    const checkedBiodatasRef = useRef<Set<number>>(new Set());
-
-    // Check favorite status for each biodata when they load
-    useEffect(() => {
-        const checkFavoriteStatuses = async () => {
-            if (!isAuthenticated || !user || currentBiodatas.length === 0) return;
-
-            // Filter out biodatas we've already checked
-            const uncheckedBiodatas = currentBiodatas.filter(biodata =>
-                !checkedBiodatasRef.current.has(biodata.id)
-            );
-
-            if (uncheckedBiodatas.length === 0) {
-                return;
-            }
-            const statuses: { [key: number]: boolean } = {};
-
-            for (const biodata of uncheckedBiodatas) {
-                try {
-                    const status = await isFavorite(biodata.id);
-                    statuses[biodata.id] = status;
-                    checkedBiodatasRef.current.add(biodata.id);
-                } catch (error) {
-                    const appError = handleApiError(error, 'BiodataSearch');
-                    logger.error(`Error checking favorite status for biodata ${biodata.id}`, appError, 'BiodataSearch');
-                    statuses[biodata.id] = false;
-                    checkedBiodatasRef.current.add(biodata.id);
-                }
-            }
-
-            setFavoriteStates(prev => ({ ...prev, ...statuses }));
-        };
-
-        checkFavoriteStatuses();
-    }, [currentBiodatas, isAuthenticated, user]);
 
     // Handle favorite toggle with backend integration
     const handleFavoriteToggle = async (biodataId: number) => {
@@ -369,19 +275,10 @@ export const BiodataSearch = () => {
 
         try {
             setFavoriteLoading(prev => ({ ...prev, [biodataId]: true }));
-
-            const isCurrentlyFavorite = favoriteStates[biodataId] || false;
-
-            if (isCurrentlyFavorite) {
-                const success = await removeFromFavorites(biodataId);
-                if (success) {
-                    setFavoriteStates(prev => ({ ...prev, [biodataId]: false }));
-                }
+            if (favoriteIds.has(biodataId)) {
+                await removeFromFavorites(biodataId);
             } else {
-                const success = await addToFavorites(biodataId);
-                if (success) {
-                    setFavoriteStates(prev => ({ ...prev, [biodataId]: true }));
-                }
+                await addToFavorites(biodataId);
             }
         } catch (error) {
             const appError = handleApiError(error, 'BiodataSearch');
@@ -391,21 +288,12 @@ export const BiodataSearch = () => {
         }
     };
 
-    // Reset pagination when filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [filteredBiodatas]);
-
     const handleSearch = async () => {
         // Prevent multiple simultaneous searches
         if (loading) {
             logger.debug('Search already in progress, ignoring duplicate request', undefined, 'BiodataSearch');
             return;
         }
-
-        // Clear previous favorite checks when doing a new search
-        checkedBiodatasRef.current.clear();
-        setFavoriteStates({});
 
         // Capture current form values as search filters
         const filters = {
@@ -428,6 +316,7 @@ export const BiodataSearch = () => {
 
         setSearchFilters(filters);
         setHasSearched(true);
+        setCurrentPage(1);
         
         // Update URL with search parameters
         const searchParams = new URLSearchParams();
@@ -462,7 +351,10 @@ export const BiodataSearch = () => {
             logger.warn('Failed to save search state to sessionStorage', error as any, 'BiodataSearch');
         }
         
-        await fetchBiodatas();
+        // First search enables the query; later searches refresh the list
+        if (hasSearched) {
+            await refetch();
+        }
     };
 
 
@@ -484,51 +376,42 @@ export const BiodataSearch = () => {
 
                 {/* Enhanced Search and Filters */}
                 <Card className="overflow-visible w-full bg-white/95  border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-                    <CardBody className="p-8 overflow-y-visible">
+                    <Card.Content className="p-8 overflow-y-visible">
                         
                         
                         <div className="grid gap-6 md:grid-cols-4">
                             <div className="space-y-2">
-                                <Select
-                                    id="gender-select"
-                                    label="I'm looking for"
-                                    aria-label="Select gender preference"
-                                    size="lg"
-                                    placeholder="Select gender"
-                                    selectedKeys={selectedGender ? new Set([selectedGender]) : new Set()}
-                                    onSelectionChange={(keys) => {
-                                        const newValue = Array.from(keys)[0] as string;
+                                <FormSelect
+                                  id="gender-select"
+                                  size="lg"
+                                  label="I'm looking for"
+                                  aria-label="Select gender preference"
+                                  placeholder="Select gender"
+                                  value={selectedGender ? selectedGender : null}
+                                  onValueChange={(selected) => {
+                                        const newValue = selected ?? "";
                                         setSelectedGender(newValue);
                                     }}
-                                    className="w-full"
-                                >
-                                    <SelectItem key="all">All</SelectItem>
-                                    <SelectItem key="Male">Male</SelectItem>
-                                    <SelectItem key="Female">Female</SelectItem>
-                                </Select>
+                                  className="w-full"
+                                  options={[{ value: "all", label: "All" }, { value: "Male", label: "Male" }, { value: "Female", label: "Female" }]}
+                                />
                             </div>
 
                             <div className="space-y-2">
-                                <Select
-                                    id="marital-status-select"
-                                    label="Marital status"
-                                    aria-label="Select marital status preference"
-                                    size="lg"
-                                    placeholder="Select marital status"
-                                    selectedKeys={selectedMaritalStatus ? new Set([selectedMaritalStatus]) : new Set()}
-                                    onSelectionChange={(keys) => {
-                                        const newValue = Array.from(keys)[0] as string;
+                                <FormSelect
+                                  id="marital-status-select"
+                                  size="lg"
+                                  label="Marital status"
+                                  aria-label="Select marital status preference"
+                                  placeholder="Select marital status"
+                                  value={selectedMaritalStatus ? selectedMaritalStatus : null}
+                                  onValueChange={(selected) => {
+                                        const newValue = selected ?? "";
                                         setSelectedMaritalStatus(newValue);
                                     }}
-                                    className="w-full"
-                                >
-                                    <SelectItem key="all">All</SelectItem>
-                                    <SelectItem key="Unmarried">Unmarried</SelectItem>
-                                    <SelectItem key="Married">Married</SelectItem>
-                                    <SelectItem key="Divorced">Divorced</SelectItem>
-                                    <SelectItem key="Widow">Widow</SelectItem>
-                                    <SelectItem key="Widower">Widower</SelectItem>
-                                </Select>
+                                  className="w-full"
+                                  options={[{ value: "all", label: "All" }, { value: "Unmarried", label: "Unmarried" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widow", label: "Widow" }, { value: "Widower", label: "Widower" }]}
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -541,14 +424,14 @@ export const BiodataSearch = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <Input
+                                <FormInput
                                     id="biodata-number-input"
+                                    size="lg"
                                     label="Biodata Number"
                                     aria-label="Enter biodata number to search"
-                                    size="lg"
                                     placeholder="Enter biodata number"
                                     value={biodataNumber}
-                                    onChange={(e) => setBiodataNumber(e.target.value)}
+                                    onValueChange={(value) => setBiodataNumber(value)}
                                     className="w-full"
                                 />
                             </div>
@@ -558,19 +441,18 @@ export const BiodataSearch = () => {
                             className="w-full mt-8 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                             size="lg"
                             onPress={handleSearch}
-                            startContent={<Search className="h-5 w-5" />}
-                            isLoading={loading}
+                            isPending={loading}
                             isDisabled={loading}
-                        >
+                        >{<Search className="h-5 w-5" />}
                             {loading ? 'Searching...' : 'Find Your Partner'}
                         </Button>
-                    </CardBody>
+                    </Card.Content>
                 </Card>
 
                 {/* Enhanced Biodatas Grid */}
                 {!hasSearched ? (
                     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                        <CardBody className="text-center py-16">
+                        <Card.Content className="text-center py-16">
                             <div className="relative">
                                 {/* Decorative background */}
                                 <div className="absolute inset-0 opacity-5">
@@ -590,7 +472,7 @@ export const BiodataSearch = () => {
                                     </p>
                                 </div>
                             </div>
-                        </CardBody>
+                        </Card.Content>
                     </Card>
                 ) : loading ? (
                     <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-8 space-y-6">
@@ -609,14 +491,14 @@ export const BiodataSearch = () => {
                             {[1, 2, 3, 4, 5, 6].map((i) => (
                                 <Card key={i} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden animate-pulse">
                                     {/* Skeleton Header */}
-                                    <CardHeader className="bg-gradient-to-r from-gray-200 to-gray-300 pb-2 relative">
+                                    <Card.Header className="bg-gradient-to-r from-gray-200 to-gray-300 pb-2 relative">
                                         <div className="flex justify-between items-start w-full">
                                             <div className="h-6 bg-gray-300 rounded-full w-20"></div>
                                             <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
                                         </div>
-                                    </CardHeader>
+                                    </Card.Header>
 
-                                    <CardBody className="space-y-3 md:space-y-6 p-3 md:p-4">
+                                    <Card.Content className="space-y-3 md:space-y-6 p-3 md:p-4">
                                         {/* Skeleton Profile Section */}
                                         <div className="grid grid-cols-24">
                                             <div className="col-span-6 flex justify-center">
@@ -634,7 +516,7 @@ export const BiodataSearch = () => {
 
                                         {/* Skeleton Button */}
                                         <div className="h-10 bg-gray-200 rounded-lg w-full"></div>
-                                    </CardBody>
+                                    </Card.Content>
                                 </Card>
                             ))}
                         </div>
@@ -644,64 +526,63 @@ export const BiodataSearch = () => {
                         {currentBiodatas.map((biodata) => (
                             <Card key={biodata.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group overflow-hidden">
                                 {/* Card Header with Gradient */}
-                                <CardHeader className="bg-gradient-to-r from-rose-400 to-pink-500 text-white pb-2 relative">
+                                <Card.Header className="bg-gradient-to-r from-rose-400 to-pink-500 text-white pb-2 relative">
                                     <div className="absolute top-2 right-2 opacity-20">
                                         <Sparkles className="h-4 w-4 text-rose-500 animate-pulse" aria-hidden="true" />
                                     </div>
                                     <div className="flex justify-between items-start w-full">
                                         <Chip
-                                            color={biodata.biodataType?.toLowerCase() === "male" ? "primary" : "secondary"}
-                                            variant="flat"
+                                            color={biodata.biodataType?.toLowerCase() === "male" ? "accent" : "default"}
+                                            variant="soft"
                                             size="sm"
                                             className="bg-white/90 backdrop-blur-sm"
-                                            startContent={<Star className="h-3 w-3" />}
-                                        >
+                                        >{<Star className="h-3 w-3" />}
                                             BD ID - {biodata.id}
                                         </Chip>
                                         <Button
+                                            variant="outline"
                                             isIconOnly
-                                            variant="ghost"
                                             size="sm"
                                             onPress={() => handleFavoriteToggle(biodata.id)}
-                                            isLoading={favoriteLoading[biodata.id]}
-                                            disabled={favoriteLoading[biodata.id]}
-                                            className={`${favoriteStates[biodata.id] ? "bg-white/90" : "bg-white/90 text-gray-400 hover:text-red-500"} transition-all duration-200`}
-                                            aria-label={favoriteStates[biodata.id] ? `Remove ${biodata.fullName} from favorites` : `Add ${biodata.fullName} to favorites`}
+                                            isPending={favoriteLoading[biodata.id]}
+                                            isDisabled={favoriteLoading[biodata.id]}
+                                            className={`${favoriteIds.has(biodata.id) ? "bg-white/90" : "bg-white/90 text-gray-400 hover:text-red-500"} transition-all duration-200`}
+                                            aria-label={favoriteIds.has(biodata.id) ? `Remove ${biodata.fullName} from favorites` : `Add ${biodata.fullName} to favorites`}
                                         >
                                             <Heart
-                                                className={`h-4 w-4 ${favoriteStates[biodata.id] ? "fill-rose-500 stroke-rose-500" : ""} group-hover:scale-110 transition-transform`}
+                                                className={`h-4 w-4 ${favoriteIds.has(biodata.id) ? "fill-rose-500 stroke-rose-500" : ""} group-hover:scale-110 transition-transform`}
                                             />
                                         </Button>
                                     </div>
-                                </CardHeader>
+                                </Card.Header>
 
-                                <CardBody className="space-y-3 md:space-y-6 p-3 md:p-4">
+                                <Card.Content className="space-y-3 md:space-y-6 p-3 md:p-4">
                                     {/* Enhanced Profile Avatar */}
                                     <div className="grid grid-cols-24">
                                         <div className="col-span-6 flex justify-center">
                                             <div className="relative">
                                                 {
                                                     biodata.biodataType == "Male" ? (
-                                                        <Avatar
-                                                            src={(biodata.profilePicture && biodata.profilePictureVisible) ?
-                                                                getImageUrl(biodata.profilePicture) :
-                                                                "icons/male.png"}
-                                                            name={biodata.fullName}
-                                                            size="lg"
-                                                            className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
-                                                            alt={`Profile picture of ${biodata.fullName}`}
-                                                        />
+                                                        <Avatar size="lg" className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                                            <Avatar.Image
+                                                                src={(biodata.profilePicture && biodata.profilePictureVisible) ?
+                                                                    getImageUrl(biodata.profilePicture) :
+                                                                    "/icons/male.png"}
+                                                                alt={`Profile picture of ${biodata.fullName}`}
+                                                            />
+                                                            <Avatar.Fallback>{biodata.fullName?.charAt(0) || "?"}</Avatar.Fallback>
+                                                        </Avatar>
 
                                                     ) : (
-                                                        <Avatar
-                                                            src={(biodata.profilePicture && biodata.profilePictureVisible) ?
-                                                                getImageUrl(biodata.profilePicture) :
-                                                                "icons/female.png"}
-                                                            name={biodata.fullName}
-                                                            size="lg"
-                                                            className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300"
-                                                            alt={`Profile picture of ${biodata.fullName}`}
-                                                        />
+                                                        <Avatar size="lg" className="w-24 h-24 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                                            <Avatar.Image
+                                                                src={(biodata.profilePicture && biodata.profilePictureVisible) ?
+                                                                    getImageUrl(biodata.profilePicture) :
+                                                                    "/icons/female.png"}
+                                                                alt={`Profile picture of ${biodata.fullName}`}
+                                                            />
+                                                            <Avatar.Fallback>{biodata.fullName?.charAt(0) || "?"}</Avatar.Fallback>
+                                                        </Avatar>
                                                     )
                                                 }
                                             </div>
@@ -736,16 +617,15 @@ export const BiodataSearch = () => {
 
                                     </div>
 
-                                    <Divider className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                                    <Separator className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
 
                                     {/* Enhanced View Profile Button */}
-                                    <Button
-                                        as={Link}
+                                    <LinkButton
                                         href={`/profile/biodatas/${biodata.id}`}
                                         className="w-full bg-white border-1 text-rose-500 border-rose-500 hover:from-rose-600 hover:to-pink-600 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                                         size="md"
-                                        startContent={<Eye className="h-4 w-4" />}
-                                        onPress={() => {
+                                        variant="outline"
+                                        onClick={() => {
                                             // Save current search state before navigating to profile
                                             try {
                                                 const searchState = {
@@ -763,16 +643,16 @@ export const BiodataSearch = () => {
                                                 console.warn('Failed to save search state:', error);
                                             }
                                         }}
-                                    >
+                                    >{<Eye className="h-4 w-4" />}
                                         View Full Profile
-                                    </Button>
-                                </CardBody>
+                                    </LinkButton>
+                                </Card.Content>
                             </Card>
                         ))}
                     </div>
                 ) : (
                     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                        <CardBody className="text-center py-16">
+                        <Card.Content className="text-center py-16">
                             <div className="relative">
                                 {/* Decorative background */}
                                 <div className="absolute inset-0 opacity-5">
@@ -800,16 +680,14 @@ export const BiodataSearch = () => {
                                                     setSelectedLocation("");
                                                     setBiodataNumber("");
                                                 }}
-                                                startContent={<Search className="h-4 w-4" />}
-                                            >
+                                            >{<Search className="h-4 w-4" />}
                                                 Clear All Filters
                                             </Button>
                                             <Button
-                                                variant="flat"
+                                                variant="secondary"
                                                 className="bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
-                                                onPress={fetchBiodatas}
-                                                startContent={<Sparkles className="h-4 w-4" />}
-                                            >
+                                                onPress={() => void refetch()}
+                                            >{<Sparkles className="h-4 w-4" />}
                                                 Refresh Profiles
                                             </Button>
                                         </div>
@@ -830,7 +708,7 @@ export const BiodataSearch = () => {
                                             <h3 className="text-xl font-semibold text-gray-900 mb-2">Oops! Something went wrong</h3>
                                             <p className="text-red-600 mb-6">{error}</p>
                                             <Button
-                                                color="primary"
+                                                variant="primary"
                                                 onPress={() => window.location.reload()}
                                                 className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
                                             >
@@ -841,21 +719,14 @@ export const BiodataSearch = () => {
                                 )
                                 }
                             </div>
-                        </CardBody>
+                        </Card.Content>
                     </Card>
                 )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="flex justify-center">
-                        <Pagination
-                            total={totalPages}
-                            page={currentPage}
-                            onChange={setCurrentPage}
-                            showControls
-                            showShadow
-                            color="secondary"
-                        />
+                        <PageNav total={totalPages} page={currentPage} onChange={setCurrentPage} />
                     </div>
                 )}
 

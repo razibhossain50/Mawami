@@ -1,6 +1,6 @@
 import { Body, Controller, Post, Get, UseGuards, Req, Res } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -103,7 +103,7 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
-  logout(@Req() req: Request) {
+  logout() {
     // In a real app, you might want to blacklist the token
     return { message: 'Logout successful' };
   }
@@ -111,8 +111,8 @@ export class AuthController {
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiExcludeEndpoint()
-  async googleAuth(@Req() req) {
-    // This route initiates the Google OAuth flow
+  googleAuth() {
+    // AuthGuard('google') redirects to Google; this handler never runs
   }
 
   @Get('google/callback')

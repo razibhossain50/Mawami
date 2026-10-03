@@ -1,4 +1,4 @@
-import { Controller, Post, Delete, Get, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Delete, Get, Param, UseGuards, Request, HttpCode, HttpStatus, ParseIntPipe } from '@nestjs/common';
 import { FavoritesService } from './favorites.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -9,9 +9,9 @@ export class FavoritesController {
 
   @Post(':biodataId')
   @HttpCode(HttpStatus.CREATED)
-  async addToFavorites(@Request() req, @Param('biodataId') biodataId: string) {
+  async addToFavorites(@Request() req, @Param('biodataId', ParseIntPipe) biodataId: number) {
     const userId = req.user.id;
-    const favorite = await this.favoritesService.addToFavorites(userId, parseInt(biodataId));
+    const favorite = await this.favoritesService.addToFavorites(userId, biodataId);
     return {
       success: true,
       message: 'Added to favorites successfully',
@@ -21,9 +21,9 @@ export class FavoritesController {
 
   @Delete(':biodataId')
   @HttpCode(HttpStatus.OK)
-  async removeFromFavorites(@Request() req, @Param('biodataId') biodataId: string) {
+  async removeFromFavorites(@Request() req, @Param('biodataId', ParseIntPipe) biodataId: number) {
     const userId = req.user.id;
-    await this.favoritesService.removeFromFavorites(userId, parseInt(biodataId));
+    await this.favoritesService.removeFromFavorites(userId, biodataId);
     return {
       success: true,
       message: 'Removed from favorites successfully'
@@ -41,9 +41,9 @@ export class FavoritesController {
   }
 
   @Get('check/:biodataId')
-  async checkIsFavorite(@Request() req, @Param('biodataId') biodataId: string) {
+  async checkIsFavorite(@Request() req, @Param('biodataId', ParseIntPipe) biodataId: number) {
     const userId = req.user.id;
-    const isFavorite = await this.favoritesService.isFavorite(userId, parseInt(biodataId));
+    const isFavorite = await this.favoritesService.isFavorite(userId, biodataId);
     return {
       success: true,
       isFavorite
