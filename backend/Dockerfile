@@ -1,7 +1,7 @@
 # Build context: repository root (uses the npm workspace lockfile)
 #   docker build -f backend/Dockerfile -t mawami-backend .
 
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -10,7 +10,7 @@ RUN npm ci --workspace backend --include-workspace-root=false
 COPY backend/ backend/
 RUN npm --workspace backend run build
 
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -18,7 +18,7 @@ COPY frontend/package.json frontend/
 RUN npm ci --workspace backend --include-workspace-root=false --omit=dev \
     && npm cache clean --force
 
-FROM node:22-alpine
+FROM node:24-alpine
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules

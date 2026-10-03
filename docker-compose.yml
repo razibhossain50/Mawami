@@ -86,6 +86,9 @@ services:
         NEXT_PUBLIC_ENVIRONMENT: ${NEXT_PUBLIC_ENVIRONMENT:-docker}
     image: mawami-frontend
     restart: unless-stopped
+    environment:
+      # Server-side rendering (e.g. profile link previews) reaches the API over the compose network
+      API_INTERNAL_URL: http://backend:3001
     ports:
       - "${FE_PUBLISH_PORT:-3000}:3000"
     depends_on:

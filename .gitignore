@@ -25,3 +25,6 @@ out/
 build/
 
 .config/
+
+# TypeScript incremental build caches
+*.tsbuildinfo

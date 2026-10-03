@@ -4,7 +4,7 @@
 #
 # NEXT_PUBLIC_* values are inlined at build time, so they are build args.
 
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -28,7 +28,7 @@ ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm --workspace frontend run build
 
-FROM node:22-alpine
+FROM node:24-alpine
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
